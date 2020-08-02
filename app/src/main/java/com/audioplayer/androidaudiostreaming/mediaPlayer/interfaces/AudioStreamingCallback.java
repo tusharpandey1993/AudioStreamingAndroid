@@ -1,9 +1,12 @@
-package com.audioplayer.androidaudiostreaming;
+package com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces;
 
-public interface AudioStreamingCallbacks {
+
+import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+
+public interface AudioStreamingCallback {
 
     // This will start playing the audio by stopping current audio if isPlaying
-    default void play() {
+    default void play(MediaMetaData mediaMetaData) {
     }
 
     // This will check is something is playing it will pause and save the seek position
@@ -55,7 +58,7 @@ public interface AudioStreamingCallbacks {
     }
 
     // This will seek the audio to desired seek position ( have to check if audio is in the limit of seek position)
-    default void seekTo() {
+    default void seekTo(long position) {
     }
 
     // This will return the last seek position (Very important)
