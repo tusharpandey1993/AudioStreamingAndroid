@@ -18,6 +18,19 @@ public abstract class StreamingContoller {
 
     public abstract void onSkipToPrevious();
 
-    public abstract void onAlmostFinished();
+/*
+
+    public abstract void PlaybackStarted();
+
+    public abstract void PlaybackFinished();
+
+    public abstract void PlaybackStopped();
+
+    public abstract void PlayBackFailed();
+
+    public abstract void PlayBackIntervalCallback();
+
+    public abstract void PlaybackNearlyFinished();
+*/
 
 }

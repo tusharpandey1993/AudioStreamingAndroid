@@ -86,4 +86,5 @@ public class MediaMetaData {
     public void setPlayState(int playState) {
         this.playState = playState;
     }
+
 }

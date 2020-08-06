@@ -4,11 +4,11 @@ import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
 
 public interface PlaybackListener {
 
-    void start();
+    default void start(){}
 
-    void stop(boolean notifyListeners);
+    default void stop(boolean notifyListeners){}
 
-    void setState(int state);
+    default void setState(int state){}
 
     int getState();
 
@@ -18,29 +18,29 @@ public interface PlaybackListener {
 
     int getCurrentStreamPosition();
 
-    void setCurrentStreamPosition(int pos);
+    default void setCurrentStreamPosition(int pos){}
 
-    void updateLastKnownStreamPosition();
+    default void updateLastKnownStreamPosition(){}
 
-    void play(MediaMetaData item);
+    default void play(MediaMetaData item){}
 
-    void pause();
+    default void pause(){}
 
-    void seekTo(int position);
+    default void seekTo(int position){}
 
-    void setCurrentMediaId(String mediaId);
+    default void setCurrentMediaId(String mediaId){}
 
     String getCurrentMediaId();
 
     interface Callback {
-        void onCompletion();
+        default void onCompletion(){}
 
-        void onPlaybackStatusChanged(int state);
+        default void onPlaybackStatusChanged(int state){}
 
-        void onError(String error);
+        default void onError(String error){}
 
-        void setCurrentMediaId(String mediaId);
+        default void setCurrentMediaId(String mediaId){}
     }
 
-    void setCallback(Callback callback);
+    default void setCallback(Callback callback){}
 }
