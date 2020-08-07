@@ -30,6 +30,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private Callback mCallback;
     private boolean mPlayOnFocusGain;
     private volatile int mCurrentPosition;
+    private volatile int mDuration;
     private volatile String mCurrentMediaId;
 
     private int mAudioFocus = AUDIO_NO_FOCUS_NO_DUCK;
@@ -97,6 +98,11 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     @Override
     public int getCurrentStreamPosition() {
         return mMediaPlayer != null ? mMediaPlayer.getCurrentPosition() : mCurrentPosition;
+    }
+
+    @Override
+    public int getMediaDuration() {
+        return mMediaPlayer != null ? mMediaPlayer.getDuration() : mDuration;
     }
 
     @Override
@@ -200,6 +206,11 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     }
 
     @Override
+    public void onPreparedListener() {
+
+    }
+
+    @Override
     public void setCurrentStreamPosition(int pos) {
         this.mCurrentPosition = pos;
     }
@@ -256,6 +267,8 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                             mCurrentPosition);
                     if (mCurrentPosition == mMediaPlayer.getCurrentPosition()) {
                         Log.d(TAG, "configMediaPlayerState: play: 4 ");
+                        mDuration = mMediaPlayer.getDuration();
+                        Log.d(TAG, "configMediaPlayerState: mDuration:" + mDuration  + " actual duration  " + mMediaPlayer.getDuration());
                         mMediaPlayer.start();
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {

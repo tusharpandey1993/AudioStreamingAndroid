@@ -18,6 +18,8 @@ public abstract class StreamingContoller {
 
     public abstract void onSkipToPrevious();
 
+    public abstract int getDuration();
+
 /*
 
     public abstract void PlaybackStarted();

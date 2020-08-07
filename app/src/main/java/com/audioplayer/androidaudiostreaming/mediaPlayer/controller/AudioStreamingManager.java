@@ -143,6 +143,8 @@ public class AudioStreamingManager  extends StreamingContoller {
         audioPlayback.seekTo((int) position);
     }
 
+
+
     @Override
     public int lastSeekPosition() {
         return (audioPlayback == null) ? 0 : (int) audioPlayback.getCurrentStreamPosition();
@@ -172,6 +174,7 @@ public class AudioStreamingManager  extends StreamingContoller {
             }
         }
     }
+
 
     /**
      * @return
@@ -334,6 +337,12 @@ public class AudioStreamingManager  extends StreamingContoller {
         if (mScheduleFuture != null) {
             mScheduleFuture.cancel(false);
         }
+    }
+
+
+    @Override
+    public int getDuration() {
+        return audioPlayback.getMediaDuration();
     }
 
     private void updateProgress() {

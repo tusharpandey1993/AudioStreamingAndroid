@@ -56,6 +56,8 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         this.audioStreamingManager = AudioStreamingManager.getInstance(this);
         configAudioStreamer();
 
+
+
         /*try {
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -294,6 +296,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 break;
             case R.id.lastSeekPosition:
                 Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toSeconds(audioStreamingManager.lastSeekPosition()) , Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "onCreate: " + audioStreamingManager.getDuration());
                 break;
             case R.id.stop:
                 audioStreamingManager.onStop();

@@ -18,6 +18,8 @@ public interface PlaybackListener {
 
     int getCurrentStreamPosition();
 
+    int getMediaDuration();
+
     default void setCurrentStreamPosition(int pos){}
 
     default void updateLastKnownStreamPosition(){}
@@ -40,7 +42,12 @@ public interface PlaybackListener {
         default void onError(String error){}
 
         default void setCurrentMediaId(String mediaId){}
+
     }
 
     default void setCallback(Callback callback){}
+
+
+    void onPreparedListener();
+
 }
