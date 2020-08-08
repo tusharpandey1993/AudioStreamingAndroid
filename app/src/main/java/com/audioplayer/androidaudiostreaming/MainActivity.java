@@ -3,12 +3,15 @@ package com.audioplayer.androidaudiostreaming;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.audioplayer.androidaudiostreaming.mediaPlayer.controller.AudioStreamingManager;
@@ -37,6 +40,9 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     private AudioStreamingManager audioStreamingManager;
     private CurrentSessionCallback currentSessionCallback;
     private Button pause, SeekTo, lastSeekPosition, stop, Resume, previous, next;
+    TextView textCurrentTime,textTotalDuration;
+    SeekBar playerSeekBar;
+    Handler handler;
 
 
     @Override
@@ -55,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         init();
         this.audioStreamingManager = AudioStreamingManager.getInstance(this);
         configAudioStreamer();
-
+        playerSeekBar.setMax(100);
 
 
         /*try {
@@ -87,6 +93,11 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         previous = findViewById(R.id.previous);
         next = findViewById(R.id.next);
 
+        textCurrentTime = findViewById(R.id.textCurrentTime);
+        playerSeekBar = findViewById(R.id.playerSeekBar);
+        textTotalDuration = findViewById(R.id.textTotalDuration);
+//        mediaPlayer  = new MediaPlayer();
+
         Resume.setOnClickListener(this);
         lastSeekPosition.setOnClickListener(this);
         stop.setOnClickListener(this);
@@ -94,6 +105,49 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         pause.setOnClickListener(this);
         next.setOnClickListener(this);
         previous.setOnClickListener(this);
+    }
+    public void updateSeekBar(){
+
+        if(streamingManager.isPlaying()){
+            playerSeekBar.setProgress((int)((float) streamingManager.lastSeekPosition()/streamingManager.getDuration() *100));
+            handler.postDelayed(updater,1000);
+            textTotalDuration.setText(streamingManager.getDuration());
+        }
+
+    }
+
+    private Runnable updater = new Runnable() {
+        @Override
+        public void run() {
+            updateSeekBar();
+            long currentDuration =streamingManager.lastSeekPosition();
+            textCurrentTime.setText(miliSecondsToTimer(currentDuration));
+        }
+    };
+
+    public String miliSecondsToTimer(long miliSeconds){
+
+        String timerString= "";
+        String secondsString = "";
+
+        int hours = (int) (miliSeconds /(1000 *60 *  60));
+        int minutes  = (int)(miliSeconds %(1000 *60 *60)/(1000* 60));
+        int seconds = (int) (miliSeconds  %(1000 *60 *60)% (1000* 60)/1000);
+
+        if(hours>0){
+            timerString  = hours +":";
+        }
+
+        if(seconds<10){
+            secondsString = "0" +seconds ;
+        }else{
+            secondsString = "" +seconds;
+        }
+
+        timerString = timerString + minutes +":" +secondsString;
+
+        return timerString;
+
     }
 
     private void configAudioStreamer() {
@@ -106,6 +160,10 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         listOfSongs = getMusicList(response, "music");
         streamingManager.setMediaList(listOfSongs);
         playSong(listOfSongs.get(1));
+        handler = new Handler();
+
+        updateSeekBar();
+
 //        checkAlreadyPlaying();
 //        playPauseEvent();
     }
@@ -295,8 +353,8 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 playPauseEvent();
                 break;
             case R.id.lastSeekPosition:
-                Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toSeconds(audioStreamingManager.lastSeekPosition()) , Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "onCreate: " + audioStreamingManager.getDuration());
+                playerSeekBar.setProgress((int)((float) TimeUnit.MILLISECONDS.toSeconds(audioStreamingManager.lastSeekPosition())));
+                  Log.d(TAG, "onCreate: " + audioStreamingManager.getDuration());
                 break;
             case R.id.stop:
                 audioStreamingManager.onStop();
