@@ -1,19 +1,29 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.MediaTimestamp;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.PowerManager;
+import android.renderscript.Allocation;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.PlaybackListener;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
 import java.io.IOException;
 
+@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnAudioFocusChangeListener,
-        MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnSeekCompleteListener {
+        MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnBufferingUpdateListener, Allocation.OnBufferAvailableListener, MediaPlayer.OnMediaTimeDiscontinuityListener {
     private static final String TAG = "AudioPlaybackListener";
 
     public static final float VOLUME_DUCK = 0.2f;
@@ -30,7 +40,8 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private Callback mCallback;
     private boolean mPlayOnFocusGain;
     private volatile int mCurrentPosition;
-    private volatile int mDuration;
+    private volatile int mDuration = 0;
+    private volatile int mBufferedDuration = 0;
     private volatile String mCurrentMediaId;
 
     private int mAudioFocus = AUDIO_NO_FOCUS_NO_DUCK;
@@ -102,8 +113,24 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
 
     @Override
     public int getMediaDuration() {
-        return mMediaPlayer != null ? mMediaPlayer.getDuration() : mDuration;
+//        try {
+//            if(mMediaPlayer != null) {
+//                Log.d(TAG, "getMediaDuration: not null " + mMediaPlayer.getDuration());
+//            } else {
+//                Log.d(TAG, "getMediaDuration: mediaplayer is null");
+//            }
+//        } catch (Exception e) {
+//            Log.d(TAG, "getMediaDuration: excep "  + e.getMessage());
+//        }
+
+        return  mMediaPlayer != null ? mMediaPlayer.getDuration() : mDuration;
     }
+
+    @Override
+    public int getBufferedMediaLength() {
+        return mBufferedDuration;
+    }
+
 
     @Override
     public void updateLastKnownStreamPosition() {
@@ -112,6 +139,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     public void play(MediaMetaData item) {
         Log.d(TAG, "play: 2");
@@ -137,7 +165,11 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                 Log.d(TAG, "play: 3");
                 createMediaPlayerIfNeeded();
                 mState = PlaybackStateCompat.STATE_BUFFERING;
-                mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                mMediaPlayer.setAudioAttributes(
+                        new AudioAttributes
+                                .Builder()
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build());
                 Log.d(TAG, "play: source : "+ source + "  mState : "  +mState);
                 mMediaPlayer.setDataSource(source);
 
@@ -267,8 +299,8 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                             mCurrentPosition);
                     if (mCurrentPosition == mMediaPlayer.getCurrentPosition()) {
                         Log.d(TAG, "configMediaPlayerState: play: 4 ");
-                        mDuration = mMediaPlayer.getDuration();
-                        Log.d(TAG, "configMediaPlayerState: mDuration:" + mDuration  + " actual duration  " + mMediaPlayer.getDuration());
+//                        mDuration = mMediaPlayer.getDuration();
+//                        Log.d(TAG, "configMediaPlayerState: mDuration:" + mDuration  + " actual duration  " + mMediaPlayer.getDuration());
                         mMediaPlayer.start();
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
@@ -314,7 +346,6 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
 
     @Override
     public void onSeekComplete(MediaPlayer mp) {
-        Log.d(TAG, "onSeekComplete from MediaPlayer:"+ mp.getCurrentPosition());
         Log.d(TAG, "onSeekComplete from MediaPlayer:" + mp.getCurrentPosition());
         mCurrentPosition = mp.getCurrentPosition();
         if (mState == PlaybackStateCompat.STATE_BUFFERING) {
@@ -377,6 +408,8 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
             // we want the media player to notify us when it's ready preparing,
             // and when it's done playing:
             mMediaPlayer.setOnPreparedListener(this);
+            mMediaPlayer.setOnBufferingUpdateListener(this);
+            mMediaPlayer.setOnMediaTimeDiscontinuityListener(this);
             mMediaPlayer.setOnCompletionListener(this);
             mMediaPlayer.setOnErrorListener(this);
             mMediaPlayer.setOnSeekCompleteListener(this);
@@ -408,6 +441,22 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         if (mWifiLock.isHeld()) {
             mWifiLock.release();
         }
+    }
+
+    @Override
+    public void onBufferingUpdate(MediaPlayer mediaPlayer, int i) {
+        mBufferedDuration = i;
+        Log.d(TAG, "hello onBufferingUpdate i: " + i  );
+    }
+
+    @Override
+    public void onBufferAvailable(Allocation allocation) {
+        Log.d(TAG, "hello onBufferAvailable: " + allocation.toString());
+    }
+
+    @Override
+    public void onMediaTimeDiscontinuity(@NonNull MediaPlayer mediaPlayer, @NonNull MediaTimestamp mediaTimestamp) {
+        Log.d(TAG, "hello onMediaTimeDiscontinuity: mediaTimestamp: " + mediaTimestamp.toString()  );
     }
 
 //    private void registerAudioNoisyReceiver() {

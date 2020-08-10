@@ -22,4 +22,7 @@ public interface CurrentSessionCallback {
 
     default void playPrevious(int indexP, MediaMetaData currentAudio){
     }
+
+    default void almostFinish(int indexP, MediaMetaData currentAudio){
+    }
 }

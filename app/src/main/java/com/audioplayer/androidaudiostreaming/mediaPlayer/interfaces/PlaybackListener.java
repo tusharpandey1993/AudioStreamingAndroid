@@ -20,6 +20,8 @@ public interface PlaybackListener {
 
     int getMediaDuration();
 
+    int getBufferedMediaLength();
+
     default void setCurrentStreamPosition(int pos){}
 
     default void updateLastKnownStreamPosition(){}

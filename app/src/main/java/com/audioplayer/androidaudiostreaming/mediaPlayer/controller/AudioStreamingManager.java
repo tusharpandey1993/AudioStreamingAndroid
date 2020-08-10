@@ -3,9 +3,12 @@ package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.CurrentSessionCallback;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.PlaybackListener;
@@ -18,6 +21,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class AudioStreamingManager  extends StreamingContoller {
     private static final String TAG = "AudioStreamingManager";
 
@@ -39,8 +43,10 @@ public class AudioStreamingManager  extends StreamingContoller {
             synchronized (AudioStreamingManager.class) {
                 instance = new AudioStreamingManager();
                 instance.context = context;
-                instance.audioPlayback = new AudioPlaybackListener(context);
-                instance.audioPlayback.setCallback(new MyStatusCallback());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    instance.audioPlayback = new AudioPlaybackListener(context);
+                    instance.audioPlayback.setCallback(new MyStatusCallback());
+                }
                 applicationHandler = new Handler(context.getMainLooper());
             }
         }
@@ -342,6 +348,21 @@ public class AudioStreamingManager  extends StreamingContoller {
 
     @Override
     public int getDuration() {
+        return audioPlayback.getMediaDuration();
+    }
+
+    @Override
+    public int getBufferedMediaLength() {
+        return audioPlayback.getBufferedMediaLength();
+    }
+
+    @Override
+    public int getMediaState() {
+        return audioPlayback.getState();
+    }
+
+    @Override
+    public int almostFinished() {
         return audioPlayback.getMediaDuration();
     }
 

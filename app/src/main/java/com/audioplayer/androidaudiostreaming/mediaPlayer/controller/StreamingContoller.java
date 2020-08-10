@@ -20,6 +20,12 @@ public abstract class StreamingContoller {
 
     public abstract int getDuration();
 
+    public abstract int getBufferedMediaLength();
+
+    public abstract int getMediaState();
+
+    public abstract int almostFinished();
+
 /*
 
     public abstract void PlaybackStarted();

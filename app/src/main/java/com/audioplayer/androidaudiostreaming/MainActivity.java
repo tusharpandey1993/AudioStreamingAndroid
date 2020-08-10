@@ -2,6 +2,7 @@ package com.audioplayer.androidaudiostreaming;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,6 +10,8 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.audioplayer.androidaudiostreaming.mediaPlayer.controller.AudioStreamingManager;
@@ -30,32 +33,32 @@ import nl.bravobit.ffmpeg.FFmpeg;
 
 public class MainActivity extends AppCompatActivity implements CurrentSessionCallback, View.OnClickListener {
 
-    private AudioStreamingManager streamingManager;
+    public static AudioStreamingManager streamingManager;
     private static MediaMetaData currentSong;
     private List<MediaMetaData> listOfSongs = new ArrayList<MediaMetaData>();
     private static final String TAG = "MainActivity";
     private AudioStreamingManager audioStreamingManager;
     private CurrentSessionCallback currentSessionCallback;
-    private Button pause, SeekTo, lastSeekPosition, stop, Resume, previous, next;
-
+    private Button play, SeekTo, lastSeekPosition, stop, Resume, previous, next;
+    public static long lastPosition;
+    public static int bufferedMediaDuartion;
+    public static long canPlayTillSeconds;
+    TextView textCurrentTime,textTotalDuration;
+    SeekBar playerSeekBar;
+    Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (FFmpeg.getInstance(this).isSupported()) {
-            // ffmpeg is supported
-        } else {
-            // ffmpeg is not supported
-        }
 
 
-        audioStreamingManager = new AudioStreamingManager();
         init();
-        this.audioStreamingManager = AudioStreamingManager.getInstance(this);
+        this.streamingManager = AudioStreamingManager.getInstance(this);
         configAudioStreamer();
-
+//        new WorkerThread().start();
+        playerSeekBar.setMax(100);
 
 
         /*try {
@@ -83,17 +86,65 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         lastSeekPosition = findViewById(R.id.lastSeekPosition);
         stop = findViewById(R.id.stop);
         SeekTo = findViewById(R.id.SeekTo);
-        pause = findViewById(R.id.pause);
+        play = findViewById(R.id.play);
         previous = findViewById(R.id.previous);
         next = findViewById(R.id.next);
+
+        textCurrentTime = findViewById(R.id.textCurrentTime);
+        playerSeekBar = findViewById(R.id.playerSeekBar);
+        textTotalDuration = findViewById(R.id.textTotalDuration);
+//        mediaPlayer  = new MediaPlayer();
 
         Resume.setOnClickListener(this);
         lastSeekPosition.setOnClickListener(this);
         stop.setOnClickListener(this);
         SeekTo.setOnClickListener(this);
-        pause.setOnClickListener(this);
+        play.setOnClickListener(this);
         next.setOnClickListener(this);
         previous.setOnClickListener(this);
+    }
+    public void updateSeekBar(){
+
+        if(streamingManager.isPlaying()){
+            playerSeekBar.setProgress((int)((float) streamingManager.lastSeekPosition()/streamingManager.getDuration() *100));
+            handler.postDelayed(updater,1000);
+//            textTotalDuration.setText(streamingManager.getDuration());
+        }
+
+    }
+
+    private Runnable updater = new Runnable() {
+        @Override
+        public void run() {
+            updateSeekBar();
+            long currentDuration =streamingManager.lastSeekPosition();
+            textCurrentTime.setText(miliSecondsToTimer(currentDuration));
+        }
+    };
+
+    public String miliSecondsToTimer(long miliSeconds){
+
+        String timerString= "";
+        String secondsString = "";
+
+        int hours = (int) (miliSeconds /(1000 *60 *  60));
+        int minutes  = (int)(miliSeconds %(1000 *60 *60)/(1000* 60));
+        int seconds = (int) (miliSeconds  %(1000 *60 *60)% (1000* 60)/1000);
+
+        if(hours>0){
+            timerString  = hours +":";
+        }
+
+        if(seconds<10){
+            secondsString = "0" +seconds ;
+        }else{
+            secondsString = "" +seconds;
+        }
+
+        timerString = timerString + minutes +":" +secondsString;
+
+        return timerString;
+
     }
 
     private void configAudioStreamer() {
@@ -105,7 +156,11 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         String response = loadJSONFromAsset(this);
         listOfSongs = getMusicList(response, "music");
         streamingManager.setMediaList(listOfSongs);
-        playSong(listOfSongs.get(1));
+        playSong(listOfSongs.get(0));
+        handler = new Handler();
+
+        updateSeekBar();
+
 //        checkAlreadyPlaying();
 //        playPauseEvent();
     }
@@ -288,29 +343,77 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.pause:
-                playPauseEvent();
+            case R.id.play:
+                configAudioStreamer();
                 break;
             case R.id.Resume:
                 playPauseEvent();
                 break;
             case R.id.lastSeekPosition:
-                Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toSeconds(audioStreamingManager.lastSeekPosition()) , Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "onCreate: " + audioStreamingManager.getDuration());
+                Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toMinutes(streamingManager.lastSeekPosition()) , Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "onCreate: " + streamingManager.getDuration());
+                playerSeekBar.setProgress((int)((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.lastSeekPosition())));
+                  Log.d(TAG, "onCreate: " + streamingManager.getDuration());
                 break;
             case R.id.stop:
-                audioStreamingManager.onStop();
+                streamingManager.onStop();
+                streamingManager.cleanupPlayer(this,true,true);
                 break;
             case R.id.SeekTo:
-                audioStreamingManager.onSeekTo(1000);
+                streamingManager.onSeekTo(streamingManager.getDuration() - 20000);
                 break;
             case R.id.next:
-                audioStreamingManager.onSkipToNext();
+                streamingManager.onSkipToNext();
                 break;
             case R.id.previous:
-                audioStreamingManager.onSkipToPrevious();
+                streamingManager.onSkipToPrevious();
                 break;
         }
 
+    }
+
+
+}
+class WorkerThread extends Thread {
+
+
+    public WorkerThread() {
+        // When false, (i.e. when it's a user thread),
+        // the Worker thread continues to run.
+        // When true, (i.e. when it's a daemon thread),
+        // the Worker thread terminates when the main
+        // thread terminates.
+        setDaemon(true);
+    }
+
+    @SuppressLint("NewApi")
+    public void run() {
+        int count = 0;
+
+        while (true) {
+            if(MainActivity.streamingManager!= null){
+//                MainActivity.lastPosition = TimeUnit.MILLISECONDS.toSeconds(streamingManager.lastSeekPosition());
+//                MainActivity.bufferedMediaDuartion = streamingManager.getBufferedMediaLength();
+
+//                Log.d("MainActivity", "current Position: " + MainActivity.lastPosition);
+//                Log.d("MainActivity", "Buffered Media: " + MainActivity.bufferedMediaDuartion);
+//                Log.d("MainActivity", "State Media: " + streamingManager.getMediaState());
+
+//                MainActivity.canPlayTillSeconds = streamingManager.getDuration() * ((long) (0.1 * MainActivity.bufferedMediaDuartion));
+//                Log.d("MainActivity", "canPlayTillSeconds: " + TimeUnit.MILLISECONDS.toMinutes(MainActivity.canPlayTillSeconds));
+
+//                if(streamingManager.getDuration() - MainActivity.lastPosition <= 10){
+//                    Log.d("MainActivity", "run: almost finished");
+//                }
+
+            } else {
+//                Log.d("MainActivity", "streamingManager: was null");
+            }
+            try {
+                sleep(500);
+            } catch (InterruptedException e) {
+                // handle exception here
+            }
+        }
     }
 }
