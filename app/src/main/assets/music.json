@@ -10,7 +10,9 @@
       "image" : "album_art.jpg",
       "trackNumber" : 1,
       "totalTrackCount" : 6,
-      "duration" : 103,
+      "offsetStart" : "960000",
+      "offsetEnd" : "1019999",
+      "duration" : "1050384",
       "site" : "http://www.hochmuth.com/mp3/Tchaikovsky_Rococo_Var_orch.mp3"
     }
   ]

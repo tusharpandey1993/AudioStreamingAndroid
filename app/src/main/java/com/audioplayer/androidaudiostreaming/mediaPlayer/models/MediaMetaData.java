@@ -11,6 +11,8 @@ public class MediaMetaData {
     private String mediaDuration;
     private String mediaArt;
     private int playState;
+    private String offsetStart;
+    private String offsetEnd;
 
     public MediaMetaData() {
     }
@@ -87,4 +89,37 @@ public class MediaMetaData {
         this.playState = playState;
     }
 
+
+    public String getOffsetStart() {
+        return offsetStart;
+    }
+
+    public void setOffsetStart(String offsetStart) {
+        this.offsetStart = offsetStart;
+    }
+
+    public String getOffsetEnd() {
+        return offsetEnd;
+    }
+
+    public void setOffsetEnd(String offsetEnd) {
+        this.offsetEnd = offsetEnd;
+    }
+
+    @Override
+    public String toString() {
+        return "MediaMetaData{" +
+                "mediaId='" + mediaId + '\'' +
+                ", mediaUrl='" + mediaUrl + '\'' +
+                ", mediaTitle='" + mediaTitle + '\'' +
+                ", mediaArtist='" + mediaArtist + '\'' +
+                ", mediaAlbum='" + mediaAlbum + '\'' +
+                ", mediaComposer='" + mediaComposer + '\'' +
+                ", mediaDuration='" + mediaDuration + '\'' +
+                ", mediaArt='" + mediaArt + '\'' +
+                ", playState=" + playState +
+                ", offsetStart='" + offsetStart + '\'' +
+                ", offsetEnd='" + offsetEnd + '\'' +
+                '}';
+    }
 }

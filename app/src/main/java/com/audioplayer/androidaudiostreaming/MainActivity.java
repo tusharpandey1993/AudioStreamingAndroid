@@ -1,9 +1,11 @@
 package com.audioplayer.androidaudiostreaming;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -31,54 +33,35 @@ import java.util.concurrent.TimeUnit;
 
 import nl.bravobit.ffmpeg.FFmpeg;
 
+@RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class MainActivity extends AppCompatActivity implements CurrentSessionCallback, View.OnClickListener {
 
     public static AudioStreamingManager streamingManager;
-    private static MediaMetaData currentSong;
+    private MediaMetaData currentSong;
     private List<MediaMetaData> listOfSongs = new ArrayList<MediaMetaData>();
     private static final String TAG = "MainActivity";
     private AudioStreamingManager audioStreamingManager;
     private CurrentSessionCallback currentSessionCallback;
-    private Button play, SeekTo, lastSeekPosition, stop, Resume, previous, next;
+    private Button play, SeekTo, lastSeekPosition, stop, Resume, previous, next, loopCount, loopOff, loopOnce, loopInfinite;
     public static long lastPosition;
     public static int bufferedMediaDuartion;
-    public static long canPlayTillSeconds;
     TextView textCurrentTime,textTotalDuration;
     SeekBar playerSeekBar;
     Handler handler;
+    private long totalSongDuration;
+    private int totalPercentage = 10;
+    private int almostFinishedThreshold = 10;
+    public long almostFinishedDuration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
         init();
         this.streamingManager = AudioStreamingManager.getInstance(this);
-        configAudioStreamer();
-//        new WorkerThread().start();
         playerSeekBar.setMax(100);
 
-
-        /*try {
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    playPauseEvent();
-                }
-            },2000);
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    playPauseEvent();
-                }
-            },14000);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
     }
 
     private void init() {
@@ -89,11 +72,14 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         play = findViewById(R.id.play);
         previous = findViewById(R.id.previous);
         next = findViewById(R.id.next);
-
+        loopCount = findViewById(R.id.loopCount);
+        loopOff = findViewById(R.id.loopOff);
+        loopOnce = findViewById(R.id.loopOnce);
+        loopInfinite = findViewById(R.id.loopInfinite);
         textCurrentTime = findViewById(R.id.textCurrentTime);
         playerSeekBar = findViewById(R.id.playerSeekBar);
         textTotalDuration = findViewById(R.id.textTotalDuration);
-//        mediaPlayer  = new MediaPlayer();
+
 
         Resume.setOnClickListener(this);
         lastSeekPosition.setOnClickListener(this);
@@ -102,13 +88,16 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         play.setOnClickListener(this);
         next.setOnClickListener(this);
         previous.setOnClickListener(this);
+        loopCount.setOnClickListener(this);
+        loopOff.setOnClickListener(this);
+        loopOnce.setOnClickListener(this);
+        loopInfinite.setOnClickListener(this);
     }
     public void updateSeekBar(){
 
         if(streamingManager.isPlaying()){
-            playerSeekBar.setProgress((int)((float) streamingManager.lastSeekPosition()/streamingManager.getDuration() *100));
+            playerSeekBar.setProgress(streamingManager.lastSeekPosition()/streamingManager.getDuration() *100);
             handler.postDelayed(updater,1000);
-//            textTotalDuration.setText(streamingManager.getDuration());
         }
 
     }
@@ -156,7 +145,9 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         String response = loadJSONFromAsset(this);
         listOfSongs = getMusicList(response, "music");
         streamingManager.setMediaList(listOfSongs);
-        playSong(listOfSongs.get(0));
+        currentSong = listOfSongs.get(0);
+        Log.d(TAG, "configAudioStreamer: " + currentSong.toString());
+        playSong(currentSong);
         handler = new Handler();
 
         updateSeekBar();
@@ -171,8 +162,8 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             streamingManager.onPause();
         } else {
             streamingManager.onPlay(currentSong);
-
         }
+        updateSeekBar();
     }
 
     private void playSong(MediaMetaData media) {
@@ -205,6 +196,8 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 infoData.setMediaComposer(musicObj.optString(""));
                 infoData.setMediaDuration(musicObj.optString("duration"));
                 infoData.setMediaArt(musicObj.optString("site") + musicObj.optString("image"));
+                infoData.setOffsetStart(musicObj.optString("offsetStart"));
+                infoData.setOffsetEnd(musicObj.optString("offsetEnd"));
                 listArticle.add(infoData);
             }
         } catch (JSONException e) {
@@ -272,6 +265,23 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
     @Override
     public void currentSeekBarPosition(int progress) {
+
+        if(streamingManager.isPlaying()) {
+            if(streamingManager.getDuration() >0) {
+                int duration  = (streamingManager.getDuration()/1000) * 60; // In seconds
+                int due = (streamingManager.getDuration() - streamingManager.lastSeekPosition())/1000;
+                int pass = duration - due;
+
+                Log.e(TAG, "updateSeekBar: "+ pass + " seconds");
+                Log.e(TAG, "duration" + duration + " seconds");
+                Log.e(TAG, "due" + due + " seconds");
+
+
+                long tenPercent = (duration * totalPercentage) / 100;
+                Log.d(TAG, "currentSeekBarPosition: assmt_time10per " + tenPercent);
+            }
+        }
+        updateSeekBar();
 
     }
 
@@ -351,16 +361,20 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 break;
             case R.id.lastSeekPosition:
                 Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toMinutes(streamingManager.lastSeekPosition()) , Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "onCreate: " + streamingManager.getDuration());
+
                 playerSeekBar.setProgress((int)((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.lastSeekPosition())));
-                  Log.d(TAG, "onCreate: " + streamingManager.getDuration());
+
                 break;
             case R.id.stop:
                 streamingManager.onStop();
                 streamingManager.cleanupPlayer(this,true,true);
                 break;
             case R.id.SeekTo:
-                streamingManager.onSeekTo(streamingManager.getDuration() - 20000);
+                if(currentSong != null) {
+                    Log.d(TAG, "onClick: " + currentSong.getOffsetStart());
+                    streamingManager.onSeekTo(Long.parseLong(currentSong.getOffsetStart()));
+                    playerSeekBar.setProgress((int)((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.getDuration() - 100000)));
+                }
                 break;
             case R.id.next:
                 streamingManager.onSkipToNext();
@@ -368,10 +382,21 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             case R.id.previous:
                 streamingManager.onSkipToPrevious();
                 break;
+            case R.id.loopCount:
+                streamingManager.loopLimited(3);
+                break;
+            case R.id.loopOff:
+                streamingManager.loopOff();
+                break;
+            case R.id.loopOnce:
+                streamingManager.loopOnce();
+                break;
+            case R.id.loopInfinite:
+                streamingManager.loopForever();
+                break;
         }
 
     }
-
 
 }
 class WorkerThread extends Thread {

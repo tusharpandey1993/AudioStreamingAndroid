@@ -20,6 +20,7 @@ import androidx.annotation.RequiresApi;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.PlaybackListener;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 @RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnAudioFocusChangeListener,
@@ -47,6 +48,16 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private int mAudioFocus = AUDIO_NO_FOCUS_NO_DUCK;
     private final AudioManager mAudioManager;
     private MediaPlayer mMediaPlayer;
+    private boolean isLooping = false;
+    private int loopCountRequest;
+    private int loopCount = 0;
+    private long offSetStart;
+    private long offSetEnd;
+
+    public void setLoopCountToZero() {
+        int loopCountRequest;
+        int loopCount = 0;
+    }
 
     public AudioPlaybackListener(Context context) {
         this.mContext = context;
@@ -174,6 +185,8 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                 mMediaPlayer.setDataSource(source);
 
                 mMediaPlayer.prepareAsync();
+                offSetStart = Long.parseLong(item.getOffsetStart());
+                offSetEnd = Long.parseLong(item.getOffsetEnd());
                 mWifiLock.acquire();
 
                 if (mCallback != null) {
@@ -215,7 +228,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
 
     @Override
     public void seekTo(int position) {
-        Log.d(TAG, "seekTo called with " + position);
+        Log.d(TAG, "seekTo called with " + TimeUnit.MILLISECONDS.toMinutes(position));
 
         if (mMediaPlayer == null) {
             // If we do not have a current media player, simply update the current position
@@ -232,6 +245,23 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         }
     }
 
+    public void loopOff() {
+        isLooping = false;
+        setLoopCountToZero();
+    }
+
+    public void loopForever() {
+        isLooping = true;
+        setLoopCountToZero();
+        loopCountRequest = Integer.MAX_VALUE;
+    }
+
+    public void loopLimited(int count) {
+        isLooping = true;
+        setLoopCountToZero();
+        loopCountRequest = count;
+    }
+
     @Override
     public void setCallback(Callback callback) {
         this.mCallback = callback;
@@ -239,6 +269,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
 
     @Override
     public void onPreparedListener() {
+        Log.d(TAG, "onPreparedListener: mMediaPlayer is prepared" );
 
     }
 
@@ -366,12 +397,26 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         if (mCallback != null) {
             mCallback.onCompletion();
         }
+
+        if(mMediaPlayer != null) {
+            if(isLooping){
+                loopCount++;
+                mMediaPlayer.seekTo(0);
+                mMediaPlayer.start();
+                if(loopCount == loopCountRequest){
+                    mMediaPlayer.stop();
+                    isLooping = false;
+                    mMediaPlayer.setLooping(false);
+                }
+            }
+        }
     }
 
     @Override
     public void onPrepared(MediaPlayer player) {
         Log.d(TAG, "onPrepared from MediaPlayer");
         configMediaPlayerState();
+        mDuration = mMediaPlayer.getDuration();
     }
 
     /**

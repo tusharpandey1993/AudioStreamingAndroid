@@ -79,6 +79,51 @@
         app:layout_constraintTop_toTopOf="parent" />
 
 
+    <Button
+        android:id="@+id/loopCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loop 3 Times"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <Button
+        android:id="@+id/loopOff"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loop Off"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <Button
+        android:id="@+id/loopOnce"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loop Once"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+
+    <Button
+        android:id="@+id/loopInfinite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Loop Forever"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
 
 
     <LinearLayout

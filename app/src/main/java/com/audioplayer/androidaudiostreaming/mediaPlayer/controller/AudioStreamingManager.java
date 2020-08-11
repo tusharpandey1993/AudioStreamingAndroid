@@ -150,6 +150,23 @@ public class AudioStreamingManager  extends StreamingContoller {
     }
 
 
+    public void loopForever() {
+        audioPlayback.loopForever();
+    }
+
+    public void loopLimited(int count) {
+        audioPlayback.loopLimited(count);
+    }
+
+
+    public void loopOff() {
+        audioPlayback.loopOff();
+    }
+
+    public void loopOnce() {
+        audioPlayback.loopLimited(2);
+    }
+
 
     @Override
     public int lastSeekPosition() {
@@ -204,7 +221,9 @@ public class AudioStreamingManager  extends StreamingContoller {
     public void handlePlayRequest() {
         Log.d(TAG, "handlePlayRequest: mState=" + audioPlayback.getState());
         if (audioPlayback != null && currentAudio != null) {
-            audioPlayback.play(currentAudio);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                audioPlayback.play(currentAudio);
+            }
             if (showPlayerNotification) {
                 if (context != null) {
 //                    Intent intent = new Intent(context, AudioStreamingService.class);
