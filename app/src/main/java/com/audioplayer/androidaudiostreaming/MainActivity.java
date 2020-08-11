@@ -111,7 +111,15 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         if(streamingManager.isPlaying()){
             playerSeekBar.setProgress((int)((float) streamingManager.lastSeekPosition()/streamingManager.getDuration() *100));
             handler.postDelayed(updater,1000);
-            textTotalDuration.setText(streamingManager.getDuration());
+            textTotalDuration.setText(miliSecondsToTimer(streamingManager.getDuration()));
+
+            int duration  = streamingManager.getDuration()/1000; // In milliseconds
+            int due = (streamingManager.getDuration() - streamingManager.lastSeekPosition())/1000;
+            int pass = duration - due;
+
+            Log.e(TAG, "updateSeekBar: "+ pass + " seconds");
+            Log.e(TAG, "duration" + duration + " seconds");
+            Log.e(TAG, "due" + due + " seconds");
         }
 
     }
@@ -176,6 +184,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             streamingManager.onPlay(currentSong);
 
         }
+        updateSeekBar();
     }
 
     private void playSong(MediaMetaData media) {
@@ -275,7 +284,8 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
     @Override
     public void currentSeekBarPosition(int progress) {
-
+    //position of song
+        Log.e(TAG, "currentSeekBarPosition: "+progress );
     }
 
     @Override
