@@ -6,6 +6,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -199,6 +201,30 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 infoData.setOffsetStart(musicObj.optString("offsetStart"));
                 infoData.setOffsetEnd(musicObj.optString("offsetEnd"));
                 listArticle.add(infoData);
+
+
+                //this is to give esxtra info about the media
+                MediaExtractor mex = new MediaExtractor();
+                try {
+                    mex.setDataSource(listArticle.get(0).getMediaUrl());// the adresss location of the sound on sdcard.
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                if(mex!=null) {
+                    MediaFormat mf = mex.getTrackFormat(0);
+                    int bitRate = ((MediaFormat) mf).getInteger(MediaFormat.KEY_BIT_RATE);
+                    int sampleRate = mf.getInteger(MediaFormat.KEY_SAMPLE_RATE);
+
+                    Log.e(TAG, "getMusicList: " + bitRate);
+                }
+
+                //this is to check what is the format of the media
+                String extension = listArticle.get(0).getMediaUrl().substring(listArticle.get(0).getMediaUrl().lastIndexOf("."));
+                Log.e(TAG, "getMusicList: "+extension);
+
+
+
             }
         } catch (JSONException e) {
             e.printStackTrace();
