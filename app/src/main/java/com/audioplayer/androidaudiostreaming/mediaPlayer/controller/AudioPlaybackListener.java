@@ -1,22 +1,18 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaTimestamp;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.PowerManager;
 import android.renderscript.Allocation;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.PlaybackListener;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
 import java.io.IOException;
@@ -24,7 +20,9 @@ import java.util.concurrent.TimeUnit;
 
 @RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnAudioFocusChangeListener,
-        MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnBufferingUpdateListener, Allocation.OnBufferAvailableListener, MediaPlayer.OnMediaTimeDiscontinuityListener {
+        MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener,
+        MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnBufferingUpdateListener,
+        Allocation.OnBufferAvailableListener, MediaPlayer.OnMediaTimeDiscontinuityListener, MediaPlayer.OnInfoListener {
     private static final String TAG = "AudioPlaybackListener";
 
     public static final float VOLUME_DUCK = 0.2f;
@@ -35,7 +33,6 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private static final int AUDIO_FOCUSED = 2;
 
     private final Context mContext;
-    private final WifiManager.WifiLock mWifiLock;
 
     private int mState;
     private Callback mCallback;
@@ -51,18 +48,19 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private boolean isLooping = false;
     private int loopCountRequest;
     private int loopCount = 0;
-    private long offSetStart;
-    private long offSetEnd;
+    private long offSetStart = 0;
+    private long offSetEnd = 0;
+    private MediaMetaData mediaMetaData;
 
     public void setLoopCountToZero() {
-        int loopCountRequest;
-        int loopCount = 0;
+        loopCountRequest = 0;
+        loopCount = 0;
     }
 
     public AudioPlaybackListener(Context context) {
         this.mContext = context;
         this.mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        this.mWifiLock = ((WifiManager) context.getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "dmAudioStreaming_Lock");
+//        this.mWifiLock = ((WifiManager) context.getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "dmAudioStreaming_Lock");
         this.mState = PlaybackStateCompat.STATE_NONE;
     }
 
@@ -154,6 +152,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     @Override
     public void play(MediaMetaData item) {
         Log.d(TAG, "play: 2");
+        mediaMetaData = item;
         mPlayOnFocusGain = true;
         tryToGetAudioFocus();
 //        registerAudioNoisyReceiver();
@@ -184,10 +183,12 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                 Log.d(TAG, "play: source : "+ source + "  mState : "  +mState);
                 mMediaPlayer.setDataSource(source);
 
+                returnMediaPlayerWhenActive();
+
                 mMediaPlayer.prepareAsync();
                 offSetStart = Long.parseLong(item.getOffsetStart());
                 offSetEnd = Long.parseLong(item.getOffsetEnd());
-                mWifiLock.acquire();
+//                mWifiLock.acquire();
 
                 if (mCallback != null) {
                     mCallback.onPlaybackStatusChanged(mState);
@@ -274,6 +275,11 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     }
 
     @Override
+    public MediaPlayer returnMediaPlayerWhenActive() {
+        return mMediaPlayer != null ? mMediaPlayer : null;
+    }
+
+    @Override
     public void setCurrentStreamPosition(int pos) {
         this.mCurrentPosition = pos;
     }
@@ -330,9 +336,13 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                             mCurrentPosition);
                     if (mCurrentPosition == mMediaPlayer.getCurrentPosition()) {
                         Log.d(TAG, "configMediaPlayerState: play: 4 ");
-//                        mDuration = mMediaPlayer.getDuration();
+
 //                        Log.d(TAG, "configMediaPlayerState: mDuration:" + mDuration  + " actual duration  " + mMediaPlayer.getDuration());
                         mMediaPlayer.start();
+                        if(mediaMetaData != null && !mediaMetaData.getOffsetStart().isEmpty()){
+                            mMediaPlayer.pause();
+                            mMediaPlayer.seekTo(Integer.parseInt(mediaMetaData.getOffsetStart()));
+                        }
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
                         mMediaPlayer.seekTo(mCurrentPosition);
@@ -454,6 +464,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
             // and when it's done playing:
             mMediaPlayer.setOnPreparedListener(this);
             mMediaPlayer.setOnBufferingUpdateListener(this);
+            mMediaPlayer.setOnInfoListener(this);
             mMediaPlayer.setOnMediaTimeDiscontinuityListener(this);
             mMediaPlayer.setOnCompletionListener(this);
             mMediaPlayer.setOnErrorListener(this);
@@ -483,9 +494,9 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         }
 
         // we can also release the Wifi lock, if we're holding it
-        if (mWifiLock.isHeld()) {
-            mWifiLock.release();
-        }
+//        if (mWifiLock.isHeld()) {
+//            mWifiLock.release();
+//        }
     }
 
     @Override
@@ -504,23 +515,20 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         Log.d(TAG, "hello onMediaTimeDiscontinuity: mediaTimestamp: " + mediaTimestamp.toString()  );
     }
 
-//    private void registerAudioNoisyReceiver() {
-//        try {
-//            if (mAudioNoisyReceiver!=null) {
-//                mContext.registerReceiver(mAudioNoisyReceiver, mAudioNoisyIntentFilter);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    private void unregisterAudioNoisyReceiver() {
-//        try {
-//            if (mAudioNoisyReceiver!=null) {
-//                mContext.unregisterReceiver(mAudioNoisyReceiver);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
+    @Override
+    public boolean onInfo(MediaPlayer mp, int what, int extra) {
+
+        Log.d(TAG, "onInfo: what: " + what + " extra: "+ extra );
+        switch (what) {
+            case MediaPlayer.MEDIA_INFO_BUFFERING_START:
+                Log.d(TAG, "onInfo: Buffering Started");
+
+                break;
+            case MediaPlayer.MEDIA_INFO_BUFFERING_END:
+                Log.d(TAG, "onInfo: Buffering Ended");
+
+                break;
+        }
+        return true;
+    }
 }

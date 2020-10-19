@@ -28,7 +28,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/SeekTo"
+        android:id="@+id/seekTo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="SeekTo"

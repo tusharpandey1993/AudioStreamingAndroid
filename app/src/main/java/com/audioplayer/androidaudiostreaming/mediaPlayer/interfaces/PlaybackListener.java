@@ -1,5 +1,7 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces;
 
+import android.media.MediaPlayer;
+
 import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
 
 public interface PlaybackListener {
@@ -51,5 +53,7 @@ public interface PlaybackListener {
 
 
     void onPreparedListener();
+
+    MediaPlayer returnMediaPlayerWhenActive();
 
 }

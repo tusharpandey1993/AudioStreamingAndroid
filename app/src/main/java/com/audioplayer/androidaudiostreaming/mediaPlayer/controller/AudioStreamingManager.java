@@ -3,6 +3,7 @@ package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -36,6 +37,7 @@ public class AudioStreamingManager  extends StreamingContoller {
     private MediaMetaData currentAudio;
     private List<MediaMetaData> mediaList = new ArrayList<>();
     public static volatile Handler applicationHandler = null;
+    private MediaPlayer mediaPlayer;
 
 
     public static AudioStreamingManager getInstance(Context context) {
@@ -158,13 +160,17 @@ public class AudioStreamingManager  extends StreamingContoller {
         audioPlayback.loopLimited(count);
     }
 
-
     public void loopOff() {
         audioPlayback.loopOff();
     }
 
     public void loopOnce() {
         audioPlayback.loopLimited(2);
+    }
+
+
+    public MediaPlayer getMediaPlayerObject() {
+        return mediaPlayer != null ? mediaPlayer : null;
     }
 
 
@@ -259,6 +265,10 @@ public class AudioStreamingManager  extends StreamingContoller {
 //                NotificationManager.getInstance().postNotificationName(NotificationManager.audioPlayStateChanged, getCurrentAudio().getMediaId());
             }
         }
+    }
+
+    public void returnMediaPlayerObject() {
+        audioPlayback.returnMediaPlayerWhenActive();
     }
 
     public void handleStopRequest(String withError) {
@@ -364,7 +374,6 @@ public class AudioStreamingManager  extends StreamingContoller {
         }
     }
 
-
     @Override
     public int getDuration() {
         return audioPlayback.getMediaDuration();
@@ -390,7 +399,15 @@ public class AudioStreamingManager  extends StreamingContoller {
             return;
         }
         if (instance.mLastPlaybackState != PlaybackStateCompat.STATE_PAUSED && instance.currentSessionCallback != null) {
+            Log.d(TAG, "updateProgress: to check weather we are getting continour current position or not" + audioPlayback.getCurrentStreamPosition() );
             instance.currentSessionCallback.currentSeekBarPosition((int) audioPlayback.getCurrentStreamPosition());
         }
     }
+
+
+    @Override
+    public MediaPlayer returnMediaPlayerWhenActive() {
+        return mediaPlayer;
+    }
+
 }

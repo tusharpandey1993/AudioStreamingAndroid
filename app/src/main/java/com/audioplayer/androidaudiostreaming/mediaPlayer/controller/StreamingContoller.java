@@ -1,5 +1,7 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 
+import android.media.MediaPlayer;
+
 import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
 
 public abstract class StreamingContoller {
@@ -25,6 +27,8 @@ public abstract class StreamingContoller {
     public abstract int getMediaState();
 
     public abstract int almostFinished();
+
+    public abstract MediaPlayer returnMediaPlayerWhenActive();
 
 /*
 
