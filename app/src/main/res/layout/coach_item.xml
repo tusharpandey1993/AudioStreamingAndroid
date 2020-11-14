@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/listRootContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginRight="15dp">
+
+
+    <TextView
+        android:id="@+id/day"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/gotham_rounded_book"
+        android:text="Today"
+        android:textColor="#FF373535"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:layout_marginTop="5dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <TextView
+        android:id="@+id/time"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:fontFamily="@font/gotham_rounded_book"
+        android:textAlignment="textEnd"
+        android:text="5:30pm"
+        android:textColor="#FF373535"
+        android:textSize="15sp"
+        android:layout_marginTop="5dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <TextView
+        android:id="@+id/classTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:fontFamily="@font/gotham_rounded_book"
+        android:text="Animation Design class"
+        android:textColor="@color/black"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/day" />
+
+
+    <TextView
+        android:id="@+id/tutorName"
+        android:layout_width="153dp"
+        android:layout_height="24dp"
+        android:layout_marginTop="5dp"
+        android:fontFamily="@font/gotham_rounded_book"
+        android:text="Abhishek Verma"
+        android:textColor="#FF373535"
+        android:textSize="15sp"
+        app:layout_constraintEnd_toStartOf="@+id/timeRemainingInHour"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/classTitle" />
+
+
+    <TextView
+        android:id="@+id/timeRemainingInHour"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:fontFamily="@font/gotham_rounded_light"
+        android:text="1 hrs"
+        android:textColor="#FF373535"
+        android:textSize="15sp"
+        android:textAlignment="textEnd"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/classTitle" />
+
+    <View
+        android:id="@+id/bottomLine"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#8F8B8B"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="@+id/timeRemainingInHour"
+        app:layout_constraintStart_toStartOf="@+id/tutorName"
+        app:layout_constraintTop_toBottomOf="@+id/tutorName" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

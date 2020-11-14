@@ -2,7 +2,6 @@ package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 
 import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Build;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -12,7 +11,7 @@ import androidx.annotation.RequiresApi;
 
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.CurrentSessionCallback;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.PlaybackListener;
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +69,7 @@ public class AudioStreamingManager  extends StreamingContoller {
     }
 
     public String getCurrentAudioId() {
-        return currentAudio != null ? currentAudio.getMediaId() : "";
+        return currentAudio != null ? String.valueOf(currentAudio.getMediaId()) : "";
     }
 
     public boolean isPlayMultiple() {
@@ -117,7 +116,7 @@ public class AudioStreamingManager  extends StreamingContoller {
             if (playMultiple && !isMediaListEmpty()) {
                 index = mediaList.indexOf(infoData);
             }
-            if (this.currentAudio != null && this.currentAudio.getMediaId().equalsIgnoreCase(infoData.getMediaId()) && instance.audioPlayback != null && instance.audioPlayback.isPlaying()) {
+            if (this.currentAudio != null && this.currentAudio.getMediaId() == infoData.getMediaId() && instance.audioPlayback != null && instance.audioPlayback.isPlaying()) {
                 onPause();
             } else {
                 this.currentAudio = infoData;
@@ -156,6 +155,11 @@ public class AudioStreamingManager  extends StreamingContoller {
 
     public void loopLimited(int count) {
         audioPlayback.loopLimited(count);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void retryResume() {
+        audioPlayback.retryResume(currentAudio);
     }
 
 
@@ -306,7 +310,7 @@ public class AudioStreamingManager  extends StreamingContoller {
 
         @Override
         public void onError(String error) {
-            //TODO FOR ERROR
+            instance.currentSessionCallback.onError(error);
         }
 
         @Override
@@ -314,6 +318,10 @@ public class AudioStreamingManager  extends StreamingContoller {
 
         }
 
+        @Override
+        public void onMediaPlayerError(Object cause) {
+            instance.currentSessionCallback.onMediaPlayerError(cause);
+        }
     }
 
 

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/listRootContainer"
+    android:layout_width="240dp"
+    android:layout_height="320dp"
+    android:background="@drawable/upcoming">
+
+
+    <TextView
+        android:id="@+id/classTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="150dp"
+        android:layout_centerHorizontal="true"
+        android:fontFamily="@font/gotham_rounded_medium"
+        android:text="Verbatim Theatre"
+        android:textColor="@color/white"
+        android:textSize="19sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tutorName"
+        android:layout_width="wrap_content"
+        android:layout_height="24dp"
+        android:layout_marginTop="5dp"
+        android:layout_below="@+id/classTitle"
+        android:layout_centerHorizontal="true"
+        android:fontFamily="@font/gotham_rounded_book"
+        android:textColor="@color/white"
+        android:textSize="19sp"
+        android:textStyle="bold"
+        android:text="Abhishek Verma" />
+
+
+    <TextView
+        android:id="@+id/startingMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="24dp"
+        android:layout_marginTop="15dp"
+        android:layout_below="@+id/tutorName"
+        android:layout_centerHorizontal="true"
+        android:fontFamily="@font/gotham_rounded_book"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:text="The class is in session." />
+
+    <ImageView
+        android:id="@+id/threeTwoOne"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="45dp"
+        android:visibility="gone"
+        android:src="@color/cardview_light_background"/>
+
+
+</RelativeLayout>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/listRootContainer"
+    android:layout_width="240dp"
+    android:layout_height="320dp"
+    android:background="@drawable/bg">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/coach_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/scrollbar_shape_coach_style"
+        android:orientation="vertical"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="5dp"
+        android:layout_marginTop="50dp"
+        android:layout_marginBottom="45dp"
+        android:scrollbarAlwaysDrawVerticalTrack="true"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <Button
+        android:id="@+id/left"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:text="LEft"
+        android:layout_alignParentBottom="true"/>
+
+    <Button
+        android:id="@+id/right"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:text="Right"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"/>
+</RelativeLayout>

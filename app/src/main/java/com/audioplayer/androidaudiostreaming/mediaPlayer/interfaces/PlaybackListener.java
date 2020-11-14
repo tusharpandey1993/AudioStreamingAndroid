@@ -1,6 +1,7 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces;
 
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
 
 public interface PlaybackListener {
 
@@ -45,11 +46,13 @@ public interface PlaybackListener {
 
         default void setCurrentMediaId(String mediaId){}
 
+        void onMediaPlayerError(Object cause);
     }
 
     default void setCallback(Callback callback){}
 
 
     void onPreparedListener();
+
 
 }

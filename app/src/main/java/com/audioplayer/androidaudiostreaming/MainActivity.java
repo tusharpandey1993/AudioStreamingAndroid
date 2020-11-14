@@ -3,11 +3,7 @@ package com.audioplayer.androidaudiostreaming;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.annotation.SuppressLint;
-import android.content.Context;
 import android.os.Build;
-import android.media.MediaExtractor;
-import android.media.MediaFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -20,50 +16,74 @@ import android.widget.Toast;
 
 import com.audioplayer.androidaudiostreaming.mediaPlayer.controller.AudioStreamingManager;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.CurrentSessionCallback;
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.ExpressionKeyFrame;
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.ExpressionModel;
 import com.google.gson.Gson;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import nl.bravobit.ffmpeg.FFmpeg;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 
 @RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class MainActivity extends AppCompatActivity implements CurrentSessionCallback, View.OnClickListener {
 
+    private static final String TAG = "MainActivity";
     public static AudioStreamingManager streamingManager;
     private MediaMetaData currentSong;
-    private List<MediaMetaData> listOfSongs = new ArrayList<MediaMetaData>();
-    private static final String TAG = "MainActivity";
+    private List<MediaMetaData> listOfSongs;
     private AudioStreamingManager audioStreamingManager;
     private CurrentSessionCallback currentSessionCallback;
-    private Button play, SeekTo, lastSeekPosition, stop, Resume, previous, next, loopCount, loopOff, loopOnce, loopInfinite;
+    private Button play, SeekTo, lastSeekPosition, stop, Resume, previous, next, loopCount, loopOff, loopOnce, loopInfinite, retryPlayResume;
     public static long lastPosition;
     public static int bufferedMediaDuartion;
-    TextView textCurrentTime,textTotalDuration;
+    TextView textCurrentTime, textTotalDuration;
     SeekBar playerSeekBar;
     Handler handler;
-    private long totalSongDuration;
     private int totalPercentage = 10;
-    private int almostFinishedThreshold = 10;
-    public long almostFinishedDuration;
+
+
+
+
+
+
+
+
+
+
+    // This is for hardcoded reponse speech and speechArray
+    private ArrayList<String> speech;
+    private ArrayList<String> speechArray;
+
+    // To add filtered Speech array that is with ax_stream and not otherise.
+    private ArrayList<String> filteredBlockArray;
+
+    // This is for
+    private ArrayList<MediaMetaData> seqArrayList;
+    private ExpressionKeyFrame expressionKeyFrame;
+
+    private LinkedList<ExpressionKeyFrame> expressionKeyLinkedList;
+    private long currentExpressionIndex = 0;
+    private MediaMetaData mediaMetaData;
+    private InternetCheckThread internetCheckThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        init();
-        this.streamingManager = AudioStreamingManager.getInstance(this);
-        playerSeekBar.setMax(100);
 
+        aaa();
     }
 
     private void init() {
@@ -77,7 +97,9 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         loopCount = findViewById(R.id.loopCount);
         loopOff = findViewById(R.id.loopOff);
         loopOnce = findViewById(R.id.loopOnce);
+        loopOnce = findViewById(R.id.loopOnce);
         loopInfinite = findViewById(R.id.loopInfinite);
+        retryPlayResume = findViewById(R.id.retryPlayResume);
         textCurrentTime = findViewById(R.id.textCurrentTime);
         playerSeekBar = findViewById(R.id.playerSeekBar);
         textTotalDuration = findViewById(R.id.textTotalDuration);
@@ -94,45 +116,37 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         loopOff.setOnClickListener(this);
         loopOnce.setOnClickListener(this);
         loopInfinite.setOnClickListener(this);
-    }
-    public void updateSeekBar(){
-
-        if(streamingManager.isPlaying()){
-            playerSeekBar.setProgress(streamingManager.lastSeekPosition()/streamingManager.getDuration() *100);
-            handler.postDelayed(updater,1000);
-        }
-
+        retryPlayResume.setOnClickListener(this);
     }
 
     private Runnable updater = new Runnable() {
         @Override
         public void run() {
-            updateSeekBar();
-            long currentDuration =streamingManager.lastSeekPosition();
+            long currentDuration = streamingManager.lastSeekPosition();
             textCurrentTime.setText(miliSecondsToTimer(currentDuration));
         }
     };
 
-    public String miliSecondsToTimer(long miliSeconds){
+    public String miliSecondsToTimer(long miliSeconds) {
 
-        String timerString= "";
+        String timerString = "";
         String secondsString = "";
 
-        int hours = (int) (miliSeconds /(1000 *60 *  60));
-        int minutes  = (int)(miliSeconds %(1000 *60 *60)/(1000* 60));
-        int seconds = (int) (miliSeconds  %(1000 *60 *60)% (1000* 60)/1000);
+        int hours = (int) (miliSeconds / (1000 * 60 * 60));
+        int minutes = (int) (miliSeconds % (1000 * 60 * 60) / (1000 * 60));
+        int seconds = (int) (miliSeconds % (1000 * 60 * 60) % (1000 * 60) / 1000);
 
-        if(hours>0){
-            timerString  = hours +":";
+        if (hours > 0) {
+            timerString = hours + ":";
         }
 
-        if(seconds<10){
-            secondsString = "0" +seconds ;
-        }else{
-            secondsString = "" +seconds;
+        if (seconds < 10) {
+            secondsString = "0" + seconds;
+        } else {
+            secondsString = "" + seconds;
         }
 
-        timerString = timerString + minutes +":" +secondsString;
+        timerString = timerString + minutes + ":" + secondsString;
 
         return timerString;
 
@@ -144,18 +158,14 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         //Set PlayMultiple 'true' if want to playing sequentially one by one songs
         // and provide the list of songs else set it 'false'
         streamingManager.setPlayMultiple(true);
-        String response = loadJSONFromAsset(this);
-        listOfSongs = getMusicList(response, "music");
+//        String response = loadJSONFromAsset(this);
+        listOfSongs.add(mediaMetaData);
         streamingManager.setMediaList(listOfSongs);
-        currentSong = listOfSongs.get(0);
+        currentSong = mediaMetaData;
         Log.d(TAG, "configAudioStreamer: " + currentSong.toString());
         playSong(currentSong);
         handler = new Handler();
 
-        updateSeekBar();
-
-//        checkAlreadyPlaying();
-//        playPauseEvent();
     }
 
     private void playPauseEvent() {
@@ -165,7 +175,6 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         } else {
             streamingManager.onPlay(currentSong);
         }
-        updateSeekBar();
     }
 
     private void playSong(MediaMetaData media) {
@@ -173,82 +182,6 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             streamingManager.onPlay(media);
         }
     }
-
-    private void checkAlreadyPlaying() {
-        if (streamingManager.isPlaying()) {
-            currentSong = streamingManager.getCurrentAudio();
-            if (currentSong != null) {
-                currentSong.setPlayState(streamingManager.mLastPlaybackState);
-            }
-        }
-    }
-
-    public static List<MediaMetaData> getMusicList(String response, String name) {
-        List<MediaMetaData> listArticle = new ArrayList<>();
-        try {
-            JSONArray array = new JSONObject(response).getJSONArray(name);
-            for (int i = 0; i < array.length(); i++) {
-                MediaMetaData infoData = new MediaMetaData();
-                JSONObject musicObj = array.getJSONObject(i);
-                infoData.setMediaId(musicObj.optString("id"));
-                infoData.setMediaUrl(musicObj.optString("site") + musicObj.optString("source"));
-                infoData.setMediaTitle(musicObj.optString("title"));
-                infoData.setMediaArtist(musicObj.optString("artist"));
-                infoData.setMediaAlbum(musicObj.optString("album"));
-                infoData.setMediaComposer(musicObj.optString(""));
-                infoData.setMediaDuration(musicObj.optString("duration"));
-                infoData.setMediaArt(musicObj.optString("site") + musicObj.optString("image"));
-                infoData.setOffsetStart(musicObj.optString("offsetStart"));
-                infoData.setOffsetEnd(musicObj.optString("offsetEnd"));
-                listArticle.add(infoData);
-
-
-                //this is to give esxtra info about the media
-                MediaExtractor mex = new MediaExtractor();
-                try {
-                    mex.setDataSource(listArticle.get(0).getMediaUrl());// the adresss location of the sound on sdcard.
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                if(mex!=null) {
-                    MediaFormat mf = mex.getTrackFormat(0);
-                    int bitRate = ((MediaFormat) mf).getInteger(MediaFormat.KEY_BIT_RATE);
-                    int sampleRate = mf.getInteger(MediaFormat.KEY_SAMPLE_RATE);
-
-                    Log.e(TAG, "getMusicList: " + bitRate);
-                }
-
-                //this is to check what is the format of the media
-                String extension = listArticle.get(0).getMediaUrl().substring(listArticle.get(0).getMediaUrl().lastIndexOf("."));
-                Log.e(TAG, "getMusicList: "+extension);
-
-
-
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        return listArticle;
-    }
-
-
-    public static String loadJSONFromAsset(Context context) {
-        String json = null;
-        try {
-            InputStream is = context.getAssets().open("music.json");
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-            json = new String(buffer, "UTF-8");
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            return null;
-        }
-        return json;
-    }
-
 
     @Override
     public void updatePlaybackState(int state) {
@@ -291,14 +224,17 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
     @Override
     public void currentSeekBarPosition(int progress) {
-
-        if(streamingManager.isPlaying()) {
-            if(streamingManager.getDuration() >0) {
-                int duration  = (streamingManager.getDuration()/1000) * 60; // In seconds
-                int due = (streamingManager.getDuration() - streamingManager.lastSeekPosition())/1000;
+        Log.d(TAG, "currentSeekBarPosition: " + progress);
+        mediaMetaData.setLastSeekBarProgres(progress);
+        Constants.getInstance(this).currentProgress = progress;
+        if (streamingManager.isPlaying()) {
+            if (streamingManager.getDuration() > 0) {
+//                parseKeyFrames(progress);
+                int duration = (streamingManager.getDuration() / 1000) * 60; // In seconds
+                int due = (streamingManager.getDuration() - streamingManager.lastSeekPosition()) / 1000;
                 int pass = duration - due;
 
-                Log.e(TAG, "updateSeekBar: "+ pass + " seconds");
+                Log.e(TAG, "updateSeekBar: " + pass + " seconds");
                 Log.e(TAG, "duration" + duration + " seconds");
                 Log.e(TAG, "due" + due + " seconds");
 
@@ -307,29 +243,68 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 Log.d(TAG, "currentSeekBarPosition: assmt_time10per " + tenPercent);
             }
         }
-        updateSeekBar();
+        parseKeyFrames(progress);
 
     }
 
     @Override
     public void playCurrent(int indexP, MediaMetaData currentAudio) {
-        Log.d(TAG, "x: currentAudio " +currentAudio);
+        Log.d(TAG, "x: currentAudio " + currentAudio);
         showMediaInfo(currentAudio);
     }
 
     @Override
     public void playNext(int indexP, MediaMetaData currentAudio) {
-        Log.d(TAG, "playNext: currentAudio " +currentAudio);
+        Log.d(TAG, "playNext: currentAudio " + currentAudio);
     }
 
     @Override
     public void playPrevious(int indexP, MediaMetaData currentAudio) {
-        Log.d(TAG, "playPrevious: currentAudio " +currentAudio);
+        Log.d(TAG, "playPrevious: currentAudio " + currentAudio);
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    public void onMediaPlayerError(Object cause) {
+        Log.d(TAG, "onError onMediaPlayerError: cause " + cause);
+        if (cause.toString().contains("1")) {
+            internetCheckThread = new InternetCheckThread(MainActivity.this, currentSessionCallback);
+            internetCheckThread.start();
+            if (internetCheckThread != null && threadIsAlive()) {
+                internetCheckThread.maxRetries(30);
+            }
+            streamingManager.retryResume();
+        }
+    }
+
+    public boolean threadIsAlive() {
+        boolean threadAlive = false;
+        if (internetCheckThread != null) {
+            if (internetCheckThread.isAlive()) {
+                threadAlive = true;
+            }
+        }
+        return threadAlive;
+    }
+
+    @Override
+    public void onError(Object cause) {
+        Log.d(TAG, "onError: " + cause);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    public void onRegainInternet() {
+        if (internetCheckThread != null && threadIsAlive()) {
+            internetCheckThread.stopThread();
+        }
+        streamingManager.retryResume();
+    }
+
+
     private void showMediaInfo(MediaMetaData media) {
-        Log.d(TAG, "showMediaInfo: media " +media);
+        Log.d(TAG, "showMediaInfo: media " + media);
         currentSong = media;
     }
 
@@ -376,6 +351,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
@@ -386,20 +362,19 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 playPauseEvent();
                 break;
             case R.id.lastSeekPosition:
-                Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toMinutes(streamingManager.lastSeekPosition()) , Toast.LENGTH_SHORT).show();
-
-                playerSeekBar.setProgress((int)((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.lastSeekPosition())));
+                Toast.makeText(this, "" + TimeUnit.MILLISECONDS.toMinutes(streamingManager.lastSeekPosition()), Toast.LENGTH_SHORT).show();
+                playerSeekBar.setProgress((int) ((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.lastSeekPosition())));
 
                 break;
             case R.id.stop:
                 streamingManager.onStop();
-                streamingManager.cleanupPlayer(this,true,true);
+                streamingManager.cleanupPlayer(this, true, true);
                 break;
             case R.id.SeekTo:
-                if(currentSong != null) {
+                if (currentSong != null) {
                     Log.d(TAG, "onClick: " + currentSong.getOffsetStart());
-                    streamingManager.onSeekTo(Long.parseLong(currentSong.getOffsetStart()));
-                    playerSeekBar.setProgress((int)((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.getDuration() - 100000)));
+                    streamingManager.onSeekTo(19798000);
+                    playerSeekBar.setProgress((int) ((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.getDuration() - 100000)));
                 }
                 break;
             case R.id.next:
@@ -420,51 +395,123 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             case R.id.loopInfinite:
                 streamingManager.loopForever();
                 break;
+            case R.id.retryPlayResume:
+                streamingManager.retryResume();
+                break;
         }
 
     }
 
-}
-class WorkerThread extends Thread {
+    public void aaa() {
+
+        init();
+        this.streamingManager = AudioStreamingManager.getInstance(this);
+        playerSeekBar.setMax(100);
+
+        listOfSongs = new ArrayList<MediaMetaData>();
+        seqArrayList = new ArrayList<>();
+        filteredBlockArray = new ArrayList<>();
+        speechArray = new ArrayList<>();
+        speech = new ArrayList<>();
+
+        speech.add("<block> \n<expression>{\"tx\":{\"type\":11,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"data\":\"\",\"length\":0,\"id\":0,\"time\":-1,\"data_dsp\":\"\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"INTRO\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19798000\",\"offsetEnd\":\"-19566000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"blink.json\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":0,\"color\":8,\"time\":0,\"rate\":0,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-89.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-1\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19793000\",\"offsetEnd\":\"-19746000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-89.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-90.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-2\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19746000\",\"offsetEnd\":\"-19689000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-90.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-91.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-3\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19689000\",\"offsetEnd\":\"-19659000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-91.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-4\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19659000\",\"offsetEnd\":\"-19611000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-98.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-5\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19611000\",\"offsetEnd\":\"-19590000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-98.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-99.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-6\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19590000\",\"offsetEnd\":\"-19566000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-99.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"Today,  World Day , for Audiovisual Heritage , is celebrated , all across the globe.\",\"length\":84,\"id\":0,\"time\":0,\"data_dsp\":\"Today, World Day  for Audiovisual Heritage  is celebrated  all across the globe.\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"blink.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":100,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-407,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"A team of Indian , and Canadian researchers , discovered the earliest evidence , of dairy farming , in the Indus Valley Civilisation.\",\"length\":133,\"id\":0,\"time\":0,\"data_dsp\":\"A team of Indian  and Canadian researchers  discovered the earliest evidence  of dairy farming  in the Indus Valley Civilisation.\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"India_flag.png\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":100,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-891,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"That\\u0027s all for now!\",\"length\":19,\"id\":0,\"time\":0,\"data_dsp\":\"That\\u0027s all for now!\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"very happy.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":12,\"color\":8,\"time\":100,\"rate\":75,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":569,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
 
 
-    public WorkerThread() {
-        // When false, (i.e. when it's a user thread),
-        // the Worker thread continues to run.
-        // When true, (i.e. when it's a daemon thread),
-        // the Worker thread terminates when the main
-        // thread terminates.
-        setDaemon(true);
+        speechArray = speech;
+        for (int i = 0; i < speechArray.size(); i++) {
+            parseAIMLexpression(speechArray.get(i));
+        }
+
     }
 
-    @SuppressLint("NewApi")
-    public void run() {
-        int count = 0;
+    public void parseAIMLexpression(final String string2) {
 
-        while (true) {
-            if(MainActivity.streamingManager!= null){
-//                MainActivity.lastPosition = TimeUnit.MILLISECONDS.toSeconds(streamingManager.lastSeekPosition());
-//                MainActivity.bufferedMediaDuartion = streamingManager.getBufferedMediaLength();
-
-//                Log.d("MainActivity", "current Position: " + MainActivity.lastPosition);
-//                Log.d("MainActivity", "Buffered Media: " + MainActivity.bufferedMediaDuartion);
-//                Log.d("MainActivity", "State Media: " + streamingManager.getMediaState());
-
-//                MainActivity.canPlayTillSeconds = streamingManager.getDuration() * ((long) (0.1 * MainActivity.bufferedMediaDuartion));
-//                Log.d("MainActivity", "canPlayTillSeconds: " + TimeUnit.MILLISECONDS.toMinutes(MainActivity.canPlayTillSeconds));
-
-//                if(streamingManager.getDuration() - MainActivity.lastPosition <= 10){
-//                    Log.d("MainActivity", "run: almost finished");
-//                }
-
-            } else {
-//                Log.d("MainActivity", "streamingManager: was null");
-            }
+        if (string2 != null && string2.length() > 0) {
             try {
-                sleep(500);
-            } catch (InterruptedException e) {
-                // handle exception here
+                Log.e(TAG, "string is xml " + string2);
+                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+                DocumentBuilder builder = factory.newDocumentBuilder();
+                String string = string2.replaceAll("[^\\x20-\\x7e]", "");
+
+                StringBuilder xmlStringBuilder = new StringBuilder();
+                xmlStringBuilder.append(string);
+                ByteArrayInputStream input = new ByteArrayInputStream(
+                        xmlStringBuilder.toString().getBytes("UTF-8"));
+                org.w3c.dom.Document doc = builder.parse(input);
+
+                if (!doc.getDocumentElement().getNodeName().equalsIgnoreCase("block")) {
+                    Log.e("ZZ", "check data");
+                    return;
+                }
+
+                NodeList nList = doc.getElementsByTagName("expression");
+
+                for (int i = 0; i < nList.getLength(); i++) {
+                    Node nNode = nList.item(i);
+
+                    if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+                        Node eElement = nNode;
+                        NodeList nodeList = ((Node) eElement).getChildNodes();
+
+                        for (int k = 0; k < nodeList.getLength(); k++) {
+                            Node n1 = nodeList.item(k);
+                            String value = n1.getTextContent();
+                            if (value.contains("ax_stream")) {
+                                if (value.contains(".mp3")) {
+                                    ExpressionModel badJson = new Gson().fromJson(value, ExpressionModel.class);
+                                    mediaMetaData = new Gson().fromJson(badJson.getAx_stream().getSeq().get(k).toString(), MediaMetaData.class);
+                                    filteredBlockArray.add("<block><expression>" + nList.item(i).getTextContent() + "</expression></block>");
+                                    seqArrayList.add(mediaMetaData);
+                                }
+                            }
+                        }
+                        fillKeyFrames(seqArrayList, filteredBlockArray);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e(TAG, "error in parseAIMLexpression the xml" + e.getMessage());
             }
+        }
+    }
+
+    // This is to create a json for playing expressions at specific time rate
+    private void fillKeyFrames(ArrayList<MediaMetaData> seqArrayList, ArrayList<String> filteredBlockArray) {
+        try {
+            expressionKeyLinkedList = null;
+            expressionKeyLinkedList = new LinkedList<ExpressionKeyFrame>();
+            for (int i = 0; i < seqArrayList.size(); i++) {
+                expressionKeyFrame = new ExpressionKeyFrame();
+                expressionKeyFrame.setId(i);
+                long startTimePositive = Math.abs(Long.parseLong(seqArrayList.get(i).getOffsetStart()));
+                expressionKeyFrame.setStartTime(startTimePositive);
+                expressionKeyFrame.setEndTime(Long.parseLong(seqArrayList.get(i).getOffsetEnd()));
+                expressionKeyFrame.setToDoTask(filteredBlockArray.get(i));
+
+                expressionKeyLinkedList.add(expressionKeyFrame);
+                configAudioStreamer();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "fillKeyFrames: "  + e.getMessage() );
+        }
+
+    }
+
+    public void parseKeyFrames(long seekTimeInLong) {
+        try {
+            Iterator<ExpressionKeyFrame> iterator = expressionKeyLinkedList.iterator();
+            if (iterator.hasNext()) {
+                if (seekTimeInLong >= currentExpressionIndex) {
+                    currentExpressionIndex = iterator.next().getStartTime();
+                    iterator.remove();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "parseKeyFrames: " + e.getMessage() );
         }
     }
 }

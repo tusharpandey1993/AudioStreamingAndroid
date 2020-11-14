@@ -1,7 +1,6 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces;
 
-import android.util.Log;
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
 
 public interface CurrentSessionCallback {
 
@@ -25,4 +24,10 @@ public interface CurrentSessionCallback {
 
     default void almostFinish(int indexP, MediaMetaData currentAudio){
     }
+
+    void onMediaPlayerError(Object cause);
+
+    void onError(Object cause);
+
+    void onRegainInternet();
 }

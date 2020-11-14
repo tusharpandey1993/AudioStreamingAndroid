@@ -1,7 +1,7 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces;
 
 
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
 
 public interface AudioStreamingCallback {
 

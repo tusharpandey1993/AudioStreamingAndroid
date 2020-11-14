@@ -1,6 +1,6 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.models;
 
-public class MediaMetaData {
+public class MediaMetaData2 {
 
     private String mediaId;
     private String mediaUrl;
@@ -14,7 +14,7 @@ public class MediaMetaData {
     private String offsetStart;
     private String offsetEnd;
 
-    public MediaMetaData() {
+    public MediaMetaData2() {
     }
 
     public String getMediaId() {

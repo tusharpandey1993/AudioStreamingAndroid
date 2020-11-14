@@ -1,6 +1,6 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
 
 public abstract class StreamingContoller {
 

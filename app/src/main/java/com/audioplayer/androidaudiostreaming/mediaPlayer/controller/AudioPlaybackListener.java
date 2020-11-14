@@ -1,6 +1,5 @@
 package com.audioplayer.androidaudiostreaming.mediaPlayer.controller;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
@@ -17,8 +16,10 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
+import com.audioplayer.androidaudiostreaming.Constants;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.PlaybackListener;
-import com.audioplayer.androidaudiostreaming.mediaPlayer.models.MediaMetaData;
+import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +43,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private boolean mPlayOnFocusGain;
     private volatile int mCurrentPosition;
     private volatile int mDuration = 0;
-    private volatile int mBufferedDuration = 0;
+    private volatile int bufferPercent = 0;
     private volatile String mCurrentMediaId;
 
     private int mAudioFocus = AUDIO_NO_FOCUS_NO_DUCK;
@@ -53,6 +54,8 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private int loopCount = 0;
     private long offSetStart;
     private long offSetEnd;
+    private boolean retrying = false;
+    private MediaMetaData currentAudioRetry;
 
     public void setLoopCountToZero() {
         int loopCountRequest;
@@ -139,7 +142,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
 
     @Override
     public int getBufferedMediaLength() {
-        return mBufferedDuration;
+        return bufferPercent;
     }
 
 
@@ -153,53 +156,57 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     public void play(MediaMetaData item) {
-        Log.d(TAG, "play: 2");
-        mPlayOnFocusGain = true;
-        tryToGetAudioFocus();
+        if(item != null) {
+            Log.d(TAG, "play: 2");
+            mPlayOnFocusGain = true;
+            tryToGetAudioFocus();
 //        registerAudioNoisyReceiver();
-        String mediaId = item.getMediaId();
-        boolean mediaHasChanged = !TextUtils.equals(mediaId, mCurrentMediaId);
-        if (mediaHasChanged) {
-            mCurrentPosition = 0;
-            mCurrentMediaId = mediaId;
-        }
-        if (mState == PlaybackStateCompat.STATE_PAUSED && !mediaHasChanged && mMediaPlayer != null) {
-            configMediaPlayerState();
-        } else {
-            mState = PlaybackStateCompat.STATE_STOPPED;
-            relaxResources(false); // release everything except MediaPlayer
-            String source = item.getMediaUrl();
-            if (source != null) {
-                source = source.replaceAll(" ", "%20"); // Escape spaces for URLs
+            String mediaId = String.valueOf(item.getMediaId());
+            boolean mediaHasChanged = !TextUtils.equals(mediaId, mCurrentMediaId);
+            if (mediaHasChanged) {
+                mCurrentPosition = 0;
+                mCurrentMediaId = mediaId;
             }
-            try {
-                Log.d(TAG, "play: 3");
-                createMediaPlayerIfNeeded();
-                mState = PlaybackStateCompat.STATE_BUFFERING;
-                mMediaPlayer.setAudioAttributes(
-                        new AudioAttributes
-                                .Builder()
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build());
-                Log.d(TAG, "play: source : "+ source + "  mState : "  +mState);
-                mMediaPlayer.setDataSource(source);
-
-                mMediaPlayer.prepareAsync();
-                offSetStart = Long.parseLong(item.getOffsetStart());
-                offSetEnd = Long.parseLong(item.getOffsetEnd());
-                mWifiLock.acquire();
-
-                if (mCallback != null) {
-                    mCallback.onPlaybackStatusChanged(mState);
+            Log.d(TAG, "play:retryResume " + retrying);
+            if (mState == PlaybackStateCompat.STATE_PAUSED && !mediaHasChanged && mMediaPlayer != null) {
+                configMediaPlayerState();
+            } else {
+                mState = PlaybackStateCompat.STATE_STOPPED;
+                relaxResources(false); // release everything except MediaPlayer
+                String source = item.getMediaUrl();
+                if (source != null) {
+                    source = source.replaceAll(" ", "%20"); // Escape spaces for URLs
                 }
+                try {
+                    Log.d(TAG, "play: 3");
+                    createMediaPlayerIfNeeded();
+                    mState = PlaybackStateCompat.STATE_BUFFERING;
+                    mMediaPlayer.setAudioAttributes(
+                            new AudioAttributes
+                                    .Builder()
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                    .build());
+                    Log.d(TAG, "play: source : "+ source + "  mState : "  +mState);
+                    mMediaPlayer.setDataSource(source);
 
-            } catch (IOException ex) {
-                Log.e(TAG, ex +"Exception playing song");
-                if (mCallback != null) {
-                    mCallback.onError(ex.getMessage());
+                    mMediaPlayer.prepareAsync();
+                    offSetStart = Long.parseLong(item.getOffsetStart());
+                    offSetEnd = Long.parseLong(item.getOffsetEnd());
+                    mWifiLock.acquire();
+
+                    if (mCallback != null) {
+                        mCallback.onPlaybackStatusChanged(mState);
+                    }
+
+                } catch (IOException ex) {
+                    Log.e(TAG, ex +"Exception playing song");
+                    if (mCallback != null) {
+                        mCallback.onError(ex.getMessage());
+                    }
                 }
             }
         }
+
     }
 
     @Override
@@ -262,6 +269,29 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         loopCountRequest = count;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void retryResume(MediaMetaData currentAudio) {
+        currentAudioRetry = currentAudio;
+        if(mMediaPlayer != null) {
+            if(bufferPercent == 100) {
+                mMediaPlayer.seekTo(Constants.instance.currentProgress);
+                mState = PlaybackStateCompat.STATE_PLAYING;
+            } else {
+                reconfigureMediaPlayer(currentAudio);
+            }
+        } else {
+            reconfigureMediaPlayer(currentAudio);
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void reconfigureMediaPlayer(MediaMetaData currentAudio) {
+        retrying = true;
+        this.play(currentAudio);
+        this.configMediaPlayerState();
+        this.pause();
+    }
+
     @Override
     public void setCallback(Callback callback) {
         this.mCallback = callback;
@@ -275,6 +305,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
 
     @Override
     public void setCurrentStreamPosition(int pos) {
+        Log.d(TAG, "setCurrentStreamPosition: " + pos);
         this.mCurrentPosition = pos;
     }
 
@@ -428,9 +459,10 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
      */
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
+        mCallback.onMediaPlayerError(what);
         Log.e(TAG, "Media player error: what=" + what + ", extra=" + extra);
         if (mCallback != null) {
-            mCallback.onError("MediaPlayer error " + what + " (" + extra + ")");
+            mCallback.onError(String.valueOf(what));
         }
         return true; // true indicates we handled the error
     }
@@ -443,6 +475,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private void createMediaPlayerIfNeeded() {
         Log.d(TAG, "createMediaPlayerIfNeeded. needed? " +(mMediaPlayer == null));
         if (mMediaPlayer == null) {
+            Log.d(TAG, "createMediaPlayerIfNeeded: " + mMediaPlayer);
             mMediaPlayer = new MediaPlayer();
 
             // Make sure the media player will acquire a wake-lock while
@@ -459,6 +492,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
             mMediaPlayer.setOnErrorListener(this);
             mMediaPlayer.setOnSeekCompleteListener(this);
         } else {
+            Log.d(TAG, "createMediaPlayerIfNeeded: media player is not null " );
             mMediaPlayer.reset();
         }
     }
@@ -488,10 +522,21 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
-    public void onBufferingUpdate(MediaPlayer mediaPlayer, int i) {
-        mBufferedDuration = i;
-        Log.d(TAG, "hello onBufferingUpdate i: " + i  );
+    public void onBufferingUpdate(MediaPlayer mediaPlayer, int bufferProgress) {
+        bufferPercent = bufferProgress;
+        Log.d(TAG, "hello onBufferingUpdate i: " + bufferPercent  );
+        if(retrying && bufferProgress == 100) {
+            retrying = false;
+
+            this.seekTo(Constants.instance.currentProgress);
+            this.play(currentAudioRetry);
+
+            this.play(currentAudioRetry);
+            this.configMediaPlayerState();
+            this.pause();
+        }
     }
 
     @Override
@@ -504,23 +549,4 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         Log.d(TAG, "hello onMediaTimeDiscontinuity: mediaTimestamp: " + mediaTimestamp.toString()  );
     }
 
-//    private void registerAudioNoisyReceiver() {
-//        try {
-//            if (mAudioNoisyReceiver!=null) {
-//                mContext.registerReceiver(mAudioNoisyReceiver, mAudioNoisyIntentFilter);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    private void unregisterAudioNoisyReceiver() {
-//        try {
-//            if (mAudioNoisyReceiver!=null) {
-//                mContext.unregisterReceiver(mAudioNoisyReceiver);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
 }
