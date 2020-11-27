@@ -15,15 +15,20 @@ import com.audioplayer.androidaudiostreaming.model.GetNextScheduledClassesRes;
 import com.audioplayer.androidaudiostreaming.model.MikoCoachClassesEntity;
 import com.google.gson.Gson;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 public class Coach extends AppCompatActivity implements CoachAdapter.ItemListener {
 
     private static final String TAG = "Coach";
     private RecyclerView coach_list;
-    private TextView day, time, classTitle, tutorName, timeRemainingInHour;
+    private TextView day, time, classTitle, tutorName, timeRemainingInHour, msh;
     private Button left,right;
     int rvSelectedItemPos = 0;
     private boolean rightPressed = false;
@@ -34,26 +39,54 @@ public class Coach extends AppCompatActivity implements CoachAdapter.ItemListene
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.coach);
+        long currentTimeLong = new Date().getTime();
+        long currentTimeMins = TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis());
+        long bEtime = 1606442460000l;
+        long backEndLong = TimeUnit.MILLISECONDS.toMinutes(bEtime);
+        Log.d(TAG, "onCreate:  + currentTimeLong " + currentTimeLong);
+        Log.d(TAG, "onCreate:  + bEtime " + bEtime);
+        Log.d(TAG, "onCreate:  + Long difference  " + (currentTimeLong - bEtime));
+        Log.d(TAG, "onCreate:  + backEndLong " + backEndLong);
+        Log.d(TAG, "onCreate:  + currentTimeMins " + currentTimeMins);
+        Log.d(TAG, "onCreate: difference " + (currentTimeMins-backEndLong) );
+        long time= System.currentTimeMillis();
+        Calendar c = Calendar.getInstance();
+        int mseconds = c.get(Calendar.MILLISECOND);
+        Log.d(TAG, "onCreate: time " + time );
+        /*init();
 
-        init();
-
-
+1606458600000
+1606482000000
         GetNextScheduledClassesRes getNextScheduledClassesRes = new GetNextScheduledClassesRes();
 
         getNextScheduledClassesRes = new Gson().fromJson(StringResponse(), GetNextScheduledClassesRes.class);
 
-        showNextScreen(getNextScheduledClassesRes);
+        showNextScreen(getNextScheduledClassesRes);*/
     }
-
+    public String formatDate(String dateStr, String dateFormat, String requiredFormatDate) {
+        if (dateStr == null) return null;
+        String date = dateStr;
+        SimpleDateFormat currentFormat = new SimpleDateFormat(dateFormat, Locale.getDefault());
+        SimpleDateFormat requiredFormat = new SimpleDateFormat(requiredFormatDate, Locale.getDefault());
+        Date getDate = null;
+        try {
+            getDate = currentFormat.parse(dateStr);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        date = requiredFormat.format(getDate);
+        return date;
+    }
     private void init() {
         coach_list = findViewById(R.id.coach_list);
         left = findViewById(R.id.left);
         right = findViewById(R.id.right);
-
+        msh = findViewById(R.id.msh);
+        msh.setText(Constants.getInstance(this).BeforeClass);
         left.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (rvSelectedItemPos  >= 0) {
+                if (rvSelectedItemPos  > 0) {
 
                     if(rightPressed) {
                         rightPressed = false;
@@ -75,7 +108,7 @@ public class Coach extends AppCompatActivity implements CoachAdapter.ItemListene
             @Override
             public void onClick(View v) {
 
-                if (rvSelectedItemPos >= arrayList.size()) {
+                if (rvSelectedItemPos == arrayList.size()-1) {
                     return;
                 }
                 if (rvSelectedItemPos < arrayList.size()) {
@@ -84,6 +117,7 @@ public class Coach extends AppCompatActivity implements CoachAdapter.ItemListene
                         rvSelectedItemPos++;
                         rvSelectedItemPos++;
                     } else {
+
                         rvSelectedItemPos++;
                     }
 
@@ -141,174 +175,58 @@ public class Coach extends AppCompatActivity implements CoachAdapter.ItemListene
                 "  \"data\": {\n" +
                 "    \"mikoCoachClasses\": [\n" +
                 "      {\n" +
-                "        \"date\": \"Nov 13 Fri\",\n" +
-                "        \"start_time\": \"03:00 PM\",\n" +
-                "        \"end_time\": \"04:30 PM\",\n" +
-                "        \"parental_date\": \"Today\",\n" +
-                "        \"parental_start_time\": \"03:00 PM EST\",\n" +
-                "        \"epoch_start_date\": \"1605236400000\",\n" +
-                "        \"epoch_end_date\": \"1605241800000\",\n" +
-                "        \"class_name\": \"Singing\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"John Spivak\",\n" +
-                "        \"class_start_time\": \"2020-11-13 20:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-13 21:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"India\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 13 Fri\",\n" +
-                "        \"start_time\": \"04:00 PM\",\n" +
-                "        \"end_time\": \"05:00 PM\",\n" +
-                "        \"parental_date\": \"Today\",\n" +
-                "        \"parental_start_time\": \"04:00 PM EST\",\n" +
-                "        \"epoch_start_date\": \"1605240000000\",\n" +
-                "        \"epoch_end_date\": \"1605243600000\",\n" +
-                "        \"class_name\": \"Animation\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Akhilesh Varma\",\n" +
-                "        \"class_start_time\": \"2020-11-13 21:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-13 22:00:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"India\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
+                "        \"date\": \"Nov 27 Fri\",\n" +
+                "        \"start_time\": \"08:52 AM\",\n" +
+                "        \"end_time\": \"10:51 AM\",\n" +
                 "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
+                "        \"parental_start_time\": \"08:52 AM EET\",\n" +
+                "        \"epoch_start_date\": \"1606467136000\",\n" +
+                "        \"epoch_end_date\": \"1606474276000\",\n" +
+                "        \"id\": \"15\",\n" +
+                "        \"class_name\": \"Bioinformatics\",\n" +
                 "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 1\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
+                "        \"class_tutor\": \"Krish\",\n" +
+                "        \"class_start_time\": \"2020-11-27 06:52:16\",\n" +
+                "        \"class_end_time\": \"2020-11-27 08:51:16\",\n" +
+                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/mikoapp/playlist.m3u8\",\n" +
+                "        \"class_zoom_ID\": \"985 7642 9304\",\n" +
+                "        \"class_live_from\": \"Kathmandu\"\n" +
                 "      },\n" +
                 "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
-                "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
+                "        \"date\": \"Nov 28 Sat\",\n" +
+                "        \"start_time\": \"10:52 AM\",\n" +
+                "        \"end_time\": \"11:52 AM\",\n" +
+                "        \"parental_date\": \"28 Nov, 2020\",\n" +
+                "        \"parental_start_time\": \"10:52 AM EET\",\n" +
+                "        \"epoch_start_date\": \"1606560736000\",\n" +
+                "        \"epoch_end_date\": \"1606564336000\",\n" +
+                "        \"id\": \"16\",\n" +
+                "        \"class_name\": \"Zoology\",\n" +
                 "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 2\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
+                "        \"class_tutor\": \"Rohit Sharma\",\n" +
+                "        \"class_start_time\": \"2020-11-28 08:52:16\",\n" +
+                "        \"class_end_time\": \"2020-11-28 09:52:16\",\n" +
+                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/mikoapp/playlist.m3u8\",\n" +
+                "        \"class_zoom_ID\": \"939 8919 9398\",\n" +
+                "        \"class_live_from\": \"Novosibirsk\"\n" +
                 "      },\n" +
                 "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
-                "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
+                "        \"date\": \"Nov 30 Mon\",\n" +
+                "        \"start_time\": \"11:53 AM\",\n" +
+                "        \"end_time\": \"01:53 PM\",\n" +
+                "        \"parental_date\": \"30 Nov, 2020\",\n" +
+                "        \"parental_start_time\": \"11:53 AM EET\",\n" +
+                "        \"epoch_start_date\": \"1606737196000\",\n" +
+                "        \"epoch_end_date\": \"1606701196000\",\n" +
+                "        \"id\": \"17\",\n" +
+                "        \"class_name\": \"Psychology\",\n" +
                 "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 3\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
-                "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 4\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
-                "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 5\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
-                "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 6\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 14 Sat\",\n" +
-                "        \"start_time\": \"12:00 AM\",\n" +
-                "        \"end_time\": \"12:30 AM\",\n" +
-                "        \"parental_date\": \"Tomorrow\",\n" +
-                "        \"parental_start_time\": \"12:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1605355200000\",\n" +
-                "        \"epoch_end_date\": \"1605357000000\",\n" +
-                "        \"class_name\": \"Dance\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Abhinav Sinha 7\",\n" +
-                "        \"class_start_time\": \"2020-11-14 05:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-14 05:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"USA\"\n" +
-                "      },\n" +
-                "      {\n" +
-                "        \"date\": \"Nov 25 Wed\",\n" +
-                "        \"start_time\": \"05:00 AM\",\n" +
-                "        \"end_time\": \"06:30 AM\",\n" +
-                "        \"parental_date\": \"25 Nov, 2020\",\n" +
-                "        \"parental_start_time\": \"05:00 AM EST\",\n" +
-                "        \"epoch_start_date\": \"1606280400000\",\n" +
-                "        \"epoch_end_date\": \"1606285800000\",\n" +
-                "        \"class_name\": \"Media\",\n" +
-                "        \"class_thumbnail_image_URL\": \"https://dummyimage.com/150x100/000/fff.jpg\",\n" +
-                "        \"class_tutor\": \"Rohan Sharma\",\n" +
-                "        \"class_start_time\": \"2020-11-25 10:00:00\",\n" +
-                "        \"class_end_time\": \"2020-11-25 11:30:00\",\n" +
-                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/miko/playlist.m3u8\",\n" +
-                "        \"class_zoom_URL\": \"https://zoom.us/j/95859961547?pwd=VDlpbDFvdAndfi893ndjBOWhZQXVsK0Nidz09\",\n" +
-                "        \"class_live_from\": \"India\"\n" +
+                "        \"class_tutor\": \"Ajit Desai\",\n" +
+                "        \"class_start_time\": \"2020-11-30 09:53:16\",\n" +
+                "        \"class_end_time\": \"2020-11-30 11:53:16\",\n" +
+                "        \"class_live_stream_URL\": \"http://714976022.r.fdccdn.net/714976022/_definst_/mikoapp/playlist.m3u88\",\n" +
+                "        \"class_zoom_ID\": \"946 6472 7140\",\n" +
+                "        \"class_live_from\": \"Indonesia\"\n" +
                 "      }\n" +
                 "    ]\n" +
                 "  }\n" +

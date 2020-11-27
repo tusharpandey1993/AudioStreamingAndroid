@@ -21,5 +21,5 @@ public class Constants {
 
     public int currentProgress = 0;
     int MIKO_COACH_LIST_THREASHOLD_TIME          =  15;
-
+    public String BeforeClass                              =  "Class will commence on the \"Coach\" on TV in 5 minutes";
 }
