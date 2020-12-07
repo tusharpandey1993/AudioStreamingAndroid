@@ -9,7 +9,7 @@
 
 
     <TextView
-        android:id="@+id/classTitle"
+        android:id="@+id/classTitleUp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="150dp"
@@ -21,11 +21,11 @@
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/tutorName"
+        android:id="@+id/tutorNameUp"
         android:layout_width="wrap_content"
         android:layout_height="24dp"
         android:layout_marginTop="5dp"
-        android:layout_below="@+id/classTitle"
+        android:layout_below="@+id/classTitleUp"
         android:layout_centerHorizontal="true"
         android:fontFamily="@font/gotham_rounded_book"
         android:textColor="@color/white"
@@ -35,11 +35,11 @@
 
 
     <TextView
-        android:id="@+id/startingMessage"
+        android:id="@+id/startingMessageUp"
         android:layout_width="wrap_content"
         android:layout_height="24dp"
         android:layout_marginTop="15dp"
-        android:layout_below="@+id/tutorName"
+        android:layout_below="@+id/tutorNameUp"
         android:layout_centerHorizontal="true"
         android:fontFamily="@font/gotham_rounded_book"
         android:textColor="@color/white"
@@ -55,6 +55,16 @@
         android:layout_marginBottom="45dp"
         android:visibility="gone"
         android:src="@color/cardview_light_background"/>
+
+
+    <include
+        android:id="@+id/customnav"
+        layout="@layout/custom_navigation" />
+
+<!--    <include-->
+<!--        android:id="@+id/coachPopUp"-->
+<!--        layout="@layout/coach_popup"-->
+<!--        android:visibility="gone"/>-->
 
 
 </RelativeLayout>

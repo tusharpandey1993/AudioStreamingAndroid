@@ -191,7 +191,7 @@ public class Hello extends AppCompatActivity {
 
 
     }
-
+/*
     // This is to create a json for playing expressions at specific time rate
     private ArrayList<ExpressionKeyFrame> fillKeyFrames(ArrayList<MediaMetaData> seqArrayList, ArrayList<String> filteredBlockArray) {
         expressionKeyFrameArrayList.clear();
@@ -241,7 +241,7 @@ public class Hello extends AppCompatActivity {
         }
 
         return expressionKeyFrameArrayList;
-    }
+    }*/
 
 
     public void parseKeyFrames(long seekTimeInLong) {

@@ -20,6 +20,7 @@ public class MediaMetaData {
     private int mediaId;
     private int playState;
     private long lastSeekBarProgres;
+    private int slotPosition;
 
 
     public String getMediaUrl() {
@@ -94,6 +95,14 @@ public class MediaMetaData {
         this.lastSeekBarProgres = lastSeekBarProgres;
     }
 
+    public int getSlotPosition() {
+        return slotPosition;
+    }
+
+    public void setSlotPosition(int slotPosition) {
+        this.slotPosition = slotPosition;
+    }
+
     @Override
     public String toString() {
         return "{" +
@@ -106,6 +115,7 @@ public class MediaMetaData {
                 ", mediaId=" + mediaId +
                 ", playState=" + playState +
                 ", lastSeekBarProgres=" + lastSeekBarProgres +
+                ", slotPosition=" + slotPosition +
                 '}';
     }
 }

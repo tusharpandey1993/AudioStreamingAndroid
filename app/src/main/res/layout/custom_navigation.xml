@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/navigationLayout"
+    android:layout_width="240dp"
+    android:layout_height="40dp"
+    android:layout_alignParentBottom="true"
+    android:background="@color/black_transparent_60"
+    android:orientation="horizontal"
+    android:visibility="visible">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/customOk"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:paddingRight="10dp"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/imgCustomOk"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:src="@drawable/ic_circle_white" />
+
+            <TextView
+                android:id="@+id/tvCustomOk"
+                style="@style/backBtnStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="Select" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/customBack"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:visibility="visible"
+            android:paddingBottom="4dp">
+
+            <ImageView
+                android:id="@+id/imgCustomBack"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:src="@drawable/ic_triangle_white" />
+
+            <TextView
+                android:id="@+id/tvCustomBack"
+                style="@style/backBtnStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="Back" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>

@@ -2,6 +2,8 @@ package com.audioplayer.androidaudiostreaming.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.List;
+
 public class ExpressionKeyFrame {
 
     @SerializedName("id")
@@ -14,7 +16,12 @@ public class ExpressionKeyFrame {
     private long endTime;
 
     @SerializedName("toDoTask")
-    private String toDoTask;
+    private List<String> toDoTask;
+
+    @SerializedName("position")
+    private int position;
+
+    private int slotPosition;
 
 
     public int getId() {
@@ -41,12 +48,28 @@ public class ExpressionKeyFrame {
         this.endTime = endTime;
     }
 
-    public String getToDoTask() {
+    public List<String> getToDoTask() {
         return toDoTask;
     }
 
-    public void setToDoTask(String toDoTask) {
+    public void setToDoTask(List<String> toDoTask) {
         this.toDoTask = toDoTask;
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
+    public int getSlotPosition() {
+        return slotPosition;
+    }
+
+    public void setSlotPosition(int slotPosition) {
+        this.slotPosition = slotPosition;
     }
 
     @Override
@@ -55,7 +78,9 @@ public class ExpressionKeyFrame {
                 "id=" + id +
                 ", startTime=" + startTime +
                 ", endTime=" + endTime +
-                ", toDoTask='" + toDoTask + '\'' +
+                ", toDoTask=" + toDoTask +
+                ", position=" + position +
+                ", slotPosition=" + slotPosition +
                 '}';
     }
 }
