@@ -201,7 +201,7 @@ public class Hello extends AppCompatActivity {
             expressionKeyFrame.setId(i);
             expressionKeyFrame.setStartTime(Long.parseLong(seqArrayList.get(i).getOffsetStart()));
             expressionKeyFrame.setEndTime(Long.parseLong(seqArrayList.get(i).getOffsetEnd()));
-            expressionKeyFrame.setToDoTask(filteredBlockArray.get(i));
+//            expressionKeyFrame.setToDoTask(filteredBlockArray.get(i));
             expressionKeyLinkedList.add(expressionKeyFrame);
             expressionKeyFrameArrayList.add(expressionKeyFrame);
         }

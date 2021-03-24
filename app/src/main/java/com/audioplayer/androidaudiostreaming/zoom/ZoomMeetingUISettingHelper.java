@@ -1,11 +1,11 @@
 package com.audioplayer.androidaudiostreaming.zoom;
-
+/*
 import us.zoom.sdk.InstantMeetingOptions;
 import us.zoom.sdk.JoinMeetingOptions;
 import us.zoom.sdk.MeetingOptions;
-import us.zoom.sdk.StartMeetingOptions;
+import us.zoom.sdk.StartMeetingOptions;*/
 
-public class ZoomMeetingUISettingHelper {
+public class ZoomMeetingUISettingHelper {} /*{
 
     private static StartMeetingOptions meetingOptions = new StartMeetingOptions();
 
@@ -68,4 +68,4 @@ public class ZoomMeetingUISettingHelper {
         return opts;
     }
 
-}
+}*/

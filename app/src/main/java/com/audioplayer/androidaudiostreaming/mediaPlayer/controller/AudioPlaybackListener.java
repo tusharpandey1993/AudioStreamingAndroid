@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 @RequiresApi(api = Build.VERSION_CODES.KITKAT)
 public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnAudioFocusChangeListener,
-        MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnBufferingUpdateListener, Allocation.OnBufferAvailableListener, MediaPlayer.OnMediaTimeDiscontinuityListener {
+        MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnSeekCompleteListener, MediaPlayer.OnBufferingUpdateListener, Allocation.OnBufferAvailableListener {
     private static final String TAG = "AudioPlaybackListener";
 
     public static final float VOLUME_DUCK = 0.2f;
@@ -52,7 +52,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
     private boolean isLooping = false;
     private int loopCountRequest;
     private int loopCount = 0;
-    private long offSetStart;
+    private int offSetStart;
     private long offSetEnd;
     private boolean retrying = false;
     private MediaMetaData currentAudioRetry;
@@ -190,7 +190,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                     mMediaPlayer.setDataSource(source);
 
                     mMediaPlayer.prepareAsync();
-                    offSetStart = Long.parseLong(item.getOffsetStart());
+                    offSetStart = Integer.parseInt(item.getOffsetStart());
                     offSetEnd = Long.parseLong(item.getOffsetEnd());
                     mWifiLock.acquire();
 
@@ -274,7 +274,7 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         currentAudioRetry = currentAudio;
         if(mMediaPlayer != null) {
             if(bufferPercent == 100) {
-                mMediaPlayer.seekTo(Constants.instance.currentProgress);
+                mMediaPlayer.seekTo(Constants.getInstance(mContext).currentProgress);
                 mState = PlaybackStateCompat.STATE_PLAYING;
             } else {
                 reconfigureMediaPlayer(currentAudio);
@@ -363,7 +363,12 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
                         Log.d(TAG, "configMediaPlayerState: play: 4 ");
 //                        mDuration = mMediaPlayer.getDuration();
 //                        Log.d(TAG, "configMediaPlayerState: mDuration:" + mDuration  + " actual duration  " + mMediaPlayer.getDuration());
-                        mMediaPlayer.start();
+                        Log.d(TAG, "configMediaPlayerState:offSetStart " + offSetStart);
+                        if(offSetStart > 0) {
+                            seekToFirstKeyframe();
+                        } else {
+                            mMediaPlayer.start();
+                        }
                         mState = PlaybackStateCompat.STATE_PLAYING;
                     } else {
                         mMediaPlayer.seekTo(mCurrentPosition);
@@ -376,6 +381,13 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         if (mCallback != null) {
             mCallback.onPlaybackStatusChanged(mState);
         }
+    }
+
+    private void seekToFirstKeyframe() {
+        mMediaPlayer.start();
+        mMediaPlayer.pause();
+        this.seekTo(offSetStart);
+        mMediaPlayer.start();
     }
 
     @Override
@@ -487,7 +499,6 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
             // and when it's done playing:
             mMediaPlayer.setOnPreparedListener(this);
             mMediaPlayer.setOnBufferingUpdateListener(this);
-            mMediaPlayer.setOnMediaTimeDiscontinuityListener(this);
             mMediaPlayer.setOnCompletionListener(this);
             mMediaPlayer.setOnErrorListener(this);
             mMediaPlayer.setOnSeekCompleteListener(this);
@@ -529,24 +540,18 @@ public class AudioPlaybackListener implements PlaybackListener, AudioManager.OnA
         Log.d(TAG, "hello onBufferingUpdate i: " + bufferPercent  );
         if(retrying && bufferProgress == 100) {
             retrying = false;
-
-            this.seekTo(Constants.instance.currentProgress);
-            this.play(currentAudioRetry);
-
             this.play(currentAudioRetry);
             this.configMediaPlayerState();
             this.pause();
+
+            this.seekTo(Constants.getInstance(mContext).currentProgress);
+            this.play(currentAudioRetry);
         }
     }
 
     @Override
     public void onBufferAvailable(Allocation allocation) {
         Log.d(TAG, "hello onBufferAvailable: " + allocation.toString());
-    }
-
-    @Override
-    public void onMediaTimeDiscontinuity(@NonNull MediaPlayer mediaPlayer, @NonNull MediaTimestamp mediaTimestamp) {
-        Log.d(TAG, "hello onMediaTimeDiscontinuity: mediaTimestamp: " + mediaTimestamp.toString()  );
     }
 
 }

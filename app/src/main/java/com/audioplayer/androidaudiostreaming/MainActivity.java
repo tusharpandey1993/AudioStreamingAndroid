@@ -2,11 +2,18 @@ package com.audioplayer.androidaudiostreaming;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -14,6 +21,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.audioplayer.androidaudiostreaming.GifLib.GifImageView;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.controller.AudioStreamingManager;
 import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.CurrentSessionCallback;
 import com.audioplayer.androidaudiostreaming.model.ExpressionKeyFrame;
@@ -24,7 +32,16 @@ import com.google.gson.Gson;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -73,19 +90,90 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     private ExpressionKeyFrame expressionKeyFrame;
 
     private LinkedList<ExpressionKeyFrame> expressionKeyLinkedList;
+    private boolean firstTime = false;
     private long currentExpressionIndex = 0;
     private long currentEndExpressionIndex = 0;
+    List<String> arrayList;
     private MediaMetaData mediaMetaData;
     private InternetCheckThread internetCheckThread;
+    private int firstExp = 0;
+    private int firstExpCounter = 0;
+    private LinkedList<String> initialExpression;
+    private GifImageView gifImageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Log.d(TAG, "onCreate: reading json " + ReadConfigurationData("/sdcard/Download/stop_speak1.txt"));
 
+        gifImageView = findViewById(R.id.slowTele);
+        hh(gifImageView);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(gifImageView.isAnimating() ){
+                    gifImageView.stopAnimation();
+                }
+            }
+        },10000);
 
-        aaa();
+        Bitmap icon = BitmapFactory.decodeResource(this.getResources(),
+                R.drawable.slow_tele);
+
+        Log.d(TAG, "onCreate: "+ getBytesFromBitmap(icon));
+/*        Fragment fragment = new VideoFragment();
+        getSupportFragmentManager().beginTransaction()
+                .addToBackStack(null)
+                .replace(R.id.container, fragment, VideoFragment.class.getSimpleName())
+                .commit();
+//        aaa();*/
     }
+
+
+    public void hh (GifImageView gifImageView) {
+        try {
+            InputStream is = null;
+            try {
+                is = this.getAssets().open("slow_tele.gif");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            byte[] fileBytes = new byte[0];
+            try {
+                fileBytes = new byte[is.available()];
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                is.read(fileBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                is.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            gifImageView.setBytes(fileBytes);
+            gifImageView.startAnimation();
+            gifImageView.setLoopCount(-1);
+        } catch (Exception e) {
+            Log.e(TAG, "hh:Exception " + e.getMessage() );
+            e.printStackTrace();
+        }
+
+    }
+
+
+    // convert from bitmap to byte array
+    public byte[] getBytesFromBitmap(Bitmap bitmap) {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+        byte[] bitmapdata = stream.toByteArray();
+        return bitmapdata;
+    }
+
 
     private void init() {
         Resume = findViewById(R.id.Resume);
@@ -153,7 +241,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
     }
 
-    private void configAudioStreamer() {
+    private void configAudioStreamer(MediaMetaData mediaMetaData) {
         streamingManager = AudioStreamingManager.getInstance(this);
         streamingManager.subscribesCallBack(this);
         //Set PlayMultiple 'true' if want to playing sequentially one by one songs
@@ -225,7 +313,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
     @Override
     public void currentSeekBarPosition(int progress) {
-        Log.d(TAG, "currentSeekBarPosition: " + progress);
+//        Log.d(TAG, "currentSeekBarPosition: " + progress);
         mediaMetaData.setLastSeekBarProgres(progress);
         Constants.getInstance(this).currentProgress = progress;
         if (streamingManager.isPlaying()) {
@@ -235,13 +323,13 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 int due = (streamingManager.getDuration() - streamingManager.lastSeekPosition()) / 1000;
                 int pass = duration - due;
 
-                Log.e(TAG, "updateSeekBar: " + pass + " seconds");
+                /*Log.e(TAG, "updateSeekBar: " + pass + " seconds");
                 Log.e(TAG, "duration" + duration + " seconds");
                 Log.e(TAG, "due" + due + " seconds");
-
+*/
 
                 long tenPercent = (duration * totalPercentage) / 100;
-                Log.d(TAG, "currentSeekBarPosition: assmt_time10per " + tenPercent);
+//                Log.d(TAG, "currentSeekBarPosition: assmt_time10per " + tenPercent);
             }
         }
         parseKeyFrames(progress);
@@ -313,10 +401,10 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     public void onStart() {
         super.onStart();
         try {
-            subscribesCallBack(this);
+/*            subscribesCallBack(this);
             if (streamingManager != null) {
                 streamingManager.subscribesCallBack(this);
-            }
+            }*/
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -326,9 +414,9 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     @Override
     public void onStop() {
         try {
-            if (streamingManager != null) {
+/*            if (streamingManager != null) {
                 streamingManager.unSubscribeCallBack();
-            }
+            }*/
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -338,9 +426,9 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     @Override
     protected void onDestroy() {
         try {
-            if (streamingManager != null) {
+/*            if (streamingManager != null) {
                 streamingManager.unSubscribeCallBack();
-            }
+            }*/
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -357,7 +445,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.play:
-                configAudioStreamer();
+//                configAudioStreamer();
                 break;
             case R.id.Resume:
                 playPauseEvent();
@@ -374,7 +462,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             case R.id.SeekTo:
                 if (currentSong != null) {
                     Log.d(TAG, "onClick: " + currentSong.getOffsetStart());
-                    streamingManager.onSeekTo(19798000);
+                    streamingManager.onSeekTo(10000);
                     playerSeekBar.setProgress((int) ((float) TimeUnit.MILLISECONDS.toSeconds(streamingManager.getDuration() - 100000)));
                 }
                 break;
@@ -415,10 +503,24 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         speechArray = new ArrayList<>();
         speech = new ArrayList<>();
 
-        speech.add("<block> \n<expression>{\"tx\":{\"type\":11,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"data\":\"\",\"length\":0,\"id\":0,\"time\":-1,\"data_dsp\":\"\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"INTRO\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"6000\",\"offsetEnd\":\"20000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"blink.json\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":0,\"color\":8,\"time\":0,\"rate\":0,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-89.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-1\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"30000\",\"offsetEnd\":\"70000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-89.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-90.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-2\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"72000\",\"offsetEnd\":\"80000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-90.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-91.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-3\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"90000\",\"offsetEnd\":\"110000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-91.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-4\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"120000\",\"offsetEnd\":\"112000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-98.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-5\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"132000\",\"offsetEnd\":\"124000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-98.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-99.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-6\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"144000\",\"offsetEnd\":\"174000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-99.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
-        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"Today,  World Day , for Audiovisual Heritage , is celebrated , all across the globe.\",\"length\":84,\"id\":0,\"time\":0,\"data_dsp\":\"Today, World Day  for Audiovisual Heritage  is celebrated  all across the globe.\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"blink.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":100,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-407,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
-        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"A team of Indian , and Canadian researchers , discovered the earliest evidence , of dairy farming , in the Indus Valley Civilisation.\",\"length\":133,\"id\":0,\"time\":0,\"data_dsp\":\"A team of Indian  and Canadian researchers  discovered the earliest evidence  of dairy farming  in the Indus Valley Civilisation.\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"India_flag.png\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":100,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-891,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
-        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"That\\u0027s all for now!\",\"length\":19,\"id\":0,\"time\":0,\"data_dsp\":\"That\\u0027s all for now!\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"very happy.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":12,\"color\":8,\"time\":100,\"rate\":75,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":569,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+        speech.add("<block>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"INTRO\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"200\",\"offsetEnd\":\"21100\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"blink.json\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":0,\"color\":8,\"time\":0,\"rate\":0,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-89.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-1\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19793000\",\"offsetEnd\":\"-19746000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-89.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-90.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-2\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19746000\",\"offsetEnd\":\"-19689000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-90.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-91.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-3\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19689000\",\"offsetEnd\":\"-19659000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-91.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-4\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19659000\",\"offsetEnd\":\"-19611000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-98.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-5\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19611000\",\"offsetEnd\":\"-19590000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":4,\"seq\":[{\"linear\":0,\"angular\":4,\"time\":1,\"type\":4,\"id\":0},{\"linear\":0,\"angular\":-5,\"time\":1,\"type\":4,\"id\":1},{\"linear\":0,\"angular\":5,\"time\":1,\"type\":4,\"id\":2},{\"linear\":0,\"angular\":-4,\"time\":1,\"type\":4,\"id\":3}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-98.png\",\"rate\":0,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":8000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":0,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-99.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-6\",\"trackNumber\":0,\"totalTrackCount\":0,\"offsetStart\":\"-19590000\",\"offsetEnd\":\"-19566000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-99.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression>\n" +
+                "  <expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"That\\u0027s all for now!\",\"length\":19,\"id\":0,\"time\":0,\"data_dsp\":\"That\\u0027s all for now!\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"very happy.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":12,\"color\":8,\"time\":100,\"rate\":75,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":806,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+//        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"Today,  World Day , for Audiovisual Heritage , is celebrated , all across the globe.\",\"length\":84,\"id\":0,\"time\":0,\"data_dsp\":\"Today, World Day  for Audiovisual Heritage  is celebrated  all across the globe.\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"blink.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":100,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-407,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+//        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"A team of Indian , and Canadian researchers , discovered the earliest evidence , of dairy farming , in the Indus Valley Civilisation.\",\"length\":133,\"id\":0,\"time\":0,\"data_dsp\":\"A team of Indian  and Canadian researchers  discovered the earliest evidence  of dairy farming  in the Indus Valley Civilisation.\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"India_flag.png\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":8,\"time\":100,\"rate\":15,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-891,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+//        speech.add("<block>\n<expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"data\":\"That\\u0027s all for now!\",\"length\":19,\"id\":0,\"time\":0,\"data_dsp\":\"That\\u0027s all for now!\",\"dsp_size\":0}]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":11,\"size\":0,\"imagetype\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"frame\":\"very happy.json\",\"rate\":0,\"id\":0,\"loop\":1}]},\"rx\":{\"type\":5,\"size\":24,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":12,\"color\":8,\"time\":100,\"rate\":75,\"id\":0}]},\"dx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":569,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
 
 
         speechArray = speech;
@@ -494,53 +596,138 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
                 expressionKeyFrame.setId(i);
                 long startTimePositive = Math.abs(Long.parseLong(seqArrayList.get(i).getOffsetStart()));
-                currentExpressionIndex = Long.parseLong(seqArrayList.get(0).getOffsetStart());
-                currentEndExpressionIndex = Long.parseLong(seqArrayList.get(0).getOffsetEnd());
                 expressionKeyFrame.setStartTime(startTimePositive);
                 expressionKeyFrame.setEndTime(Long.parseLong(seqArrayList.get(i).getOffsetEnd()));
                 int j = i;
                 int incrementalValue = i+j;
+//                Log.d(TAG, "fillKeyFrames: incrementalValue " + incrementalValue + "  j " + j);
                 for (j = incrementalValue; j <= incrementalValue+1; j++) {
-                    scriptExpressions.add(filteredBlockArray.get(j));
+//                    Log.d(TAG, "fillKeyFrames: j " +j);
+                    if(filteredBlockArray != null && j <= filteredBlockArray.size()-1) {
+                        scriptExpressions.add(filteredBlockArray.get(j));
+                    }
+
                 }
                 expressionKeyFrame.setToDoTask(scriptExpressions);
-                expressionKeyFrame.setSlotPosition(seqArrayList.get(i).getSlotPosition());
                 Log.d(TAG, "fillKeyFrames: " + expressionKeyFrame.toString());
                 expressionKeyLinkedList.add(expressionKeyFrame);
             }
 
-            configAudioStreamer();
+            configAudioStreamer(seqArrayList.get(0));
 
         } catch (Exception e) {
-            Log.e(TAG, "fillKeyFrames: "  + e.getMessage() );
+            Log.e(TAG, "fillKeyFrames: Exception "  + e.getMessage() );
         }
     }
+
 
     public void parseKeyFrames(long seekTimeInLong) {
         try {
             Iterator<ExpressionKeyFrame> iterator = expressionKeyLinkedList.iterator();
-            if (iterator.hasNext()) {
-                if (seekTimeInLong >= currentExpressionIndex && seekTimeInLong <= currentExpressionIndex) {
-                    currentExpressionIndex = iterator.next().getStartTime();
-                    currentEndExpressionIndex = iterator.next().getEndTime();
-                    Log.d(TAG, "playExpression parseKeyFrames: seekTimeInLong: inside " + seekTimeInLong  + " currentExpressionIndex " + currentExpressionIndex);
+            ExpressionKeyFrame expressionKeyFrame = new ExpressionKeyFrame();
+            initialExpression = new LinkedList<String>();
 
+            if (iterator.hasNext()) {
+                expressionKeyFrame = iterator.next();
+
+                if(firstExp == 0 || firstExp <= 2) {
+
+                    for(int i = 0; i < expressionKeyFrame.getToDoTask().size(); i++) {
+                        Log.d(TAG, "aa playExpression: parseKeyFrames: " + expressionKeyFrame.getToDoTask().get(i));
+                        initialExpression.add(expressionKeyFrame.getToDoTask().get(i));
+                    }
+                    firstExp++;
                     iterator.remove();
-                    playExpression(iterator.next().getToDoTask());
+                    if(firstExp == 2) {
+                        Log.d(TAG, "aa playExpression:  play expression from here false "  + initialExpression.size() );
+//                        playExpression(false);
+                    }
+                    return;
+                }
+//                expressionKeyFrame = iterator.next();
+                currentExpressionIndex = expressionKeyFrame.getStartTime();
+                currentEndExpressionIndex = expressionKeyFrame.getEndTime();
+                Log.d(TAG, "parseKeyFrames: seekTimeInLong " + seekTimeInLong + " currentExpressionIndex " + currentExpressionIndex + " currentEndExpressionIndex " + currentEndExpressionIndex);
+                if (seekTimeInLong >= currentExpressionIndex && seekTimeInLong <= currentEndExpressionIndex) {
+                    arrayList = expressionKeyFrame.getToDoTask();
+                    playExpression(false);
+                    Log.d(TAG, "playExpression parseKeyFrames: seekTimeInLong: inside " + seekTimeInLong + " currentExpressionIndex " + currentExpressionIndex + " currentEndExpressionIndex " + currentEndExpressionIndex + " arrayList " + arrayList.get(0));
+                    expressionKeyFrame = null;
+                    iterator.remove();
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "parseKeyFrames: Exception " + e.getMessage() );
+            Log.e(TAG, "parseKeyFrames: Exception " + e.getMessage());
         }
     }
 
-    private void playExpression(List<String> arrayList) {
+    public void playExpression(boolean playSecond) {
         try {
-            for (int i = 0; i <= 0; i++) {
-                Log.d(TAG, "playExpression:parseKeyFrames " + arrayList.get(i));
+            Log.d(TAG, "aa playExpression:firstExp " + firstExp);
+            if(firstExp <= 2) {
+                Log.d(TAG, "aa playExpression: initialExpression.size() " + initialExpression.size());
+                Iterator<String> iterator = initialExpression.iterator();
+                if (iterator.hasNext()) {
+                    String expression = iterator.next();
+                    iterator.remove();
+                    playSystemExpressionWithCallBack(expression);
+                }
+            }
+            String secondExp = "";
+            if (arrayList != null && arrayList.size() > 0) {
+                if (!playSecond) {
+                    Log.d(TAG, "aa playExpression: playSecond " + playSecond + arrayList.get(0));
+//                    playSystemExpressionWithCallBack("<block><expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-4\",\"trackNumber\":0,\"totalTrackCount\":0,\"" +
+//                            "offsetStart\":\"90000\",\"offsetEnd\":\"120000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
+                } else {
+                    if(arrayList.size() > 1) {
+                        secondExp = arrayList.get(1);
+                        arrayList.clear();
+                        if(!TextUtils.isEmpty(secondExp)) {
+                            Log.d(TAG, "aa playExpression: playSecond "+ playSecond + secondExp);
+//                            playSystemExpressionWithCallBack(secondExp);
+                            secondExp = "";
+                        }
+                    }
+                }
+            } else {
+                Log.e(TAG, "aa playExpression: the arraylist is empty " );
             }
         } catch (Exception e) {
-            Log.e(TAG, "playExpression:Exception ", e.getCause());
+            Log.e(TAG, "playExpression:Exception " + e.getMessage());
         }
+    }
+
+    private void playSystemExpressionWithCallBack(String expression) {
+        Log.d(TAG, "callMeAgain: " + expression);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                playExpression(true);
+            }
+        },100);
+
+    }
+
+    public String ReadConfigurationData(String path) {
+        StringBuilder buf = null;
+        try {
+            AssetManager manager = this.getAssets();
+            buf = new StringBuilder();
+            InputStream json = manager.open(path);
+            BufferedReader in = new BufferedReader(new InputStreamReader(json, "UTF-8"));
+            String str;
+
+            while ((str=in.readLine()) != null) {
+                buf.append(str);
+            }
+
+            in.close();
+
+        } catch (Exception e) {
+            Log.e(TAG, "ReadConfigurationData: " + e.getMessage());
+        }
+
+        return buf.toString();
     }
 }

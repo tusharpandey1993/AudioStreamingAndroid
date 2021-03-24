@@ -2,10 +2,8 @@ package com.audioplayer.androidaudiostreaming.zoom;
 
 import java.util.ArrayList;
 
-import us.zoom.sdk.ZoomSDK;
-import us.zoom.sdk.ZoomSDKAuthenticationListener;
 
-public class UserLoginCallback implements ZoomSDKAuthenticationListener {
+public class UserLoginCallback {}/*implements ZoomSDKAuthenticationListener {
 
     private final static String TAG = "UserLoginCallback";
 
@@ -43,10 +41,10 @@ public class UserLoginCallback implements ZoomSDKAuthenticationListener {
         mListenerList.remove(listener);
     }
 
-    /**
+    *//**
      * Called on ZoomSDK login success or failed
      * @param result {@link ZoomAuthenticationError}.ZOOM_AUTH_ERROR_SUCCESS for success
-     */
+     *//*
     @Override
     public void onZoomSDKLoginResult(long result) {
         for(ZoomDemoAuthenticationListener listener : mListenerList) {
@@ -56,10 +54,10 @@ public class UserLoginCallback implements ZoomSDKAuthenticationListener {
         }
     }
 
-    /**
+    *//**
      * Called on ZoomSDK logout success or failed
      * @param result {@link ZoomAuthenticationError}.ZOOM_AUTH_ERROR_SUCCESS for success
-     */
+     *//*
     @Override
     public void onZoomSDKLogoutResult(long result) {
         for(ZoomDemoAuthenticationListener listener : mListenerList) {
@@ -69,9 +67,9 @@ public class UserLoginCallback implements ZoomSDKAuthenticationListener {
         }
     }
 
-    /**
+    *//**
      * Zoom identity expired, please re-login or generate new zoom access token via REST api
-     */
+     *//*
     @Override
     public void onZoomIdentityExpired() {
         for(ZoomDemoAuthenticationListener listener : mListenerList) {
@@ -81,9 +79,9 @@ public class UserLoginCallback implements ZoomSDKAuthenticationListener {
         }
     }
 
-    /**
+    *//**
      * ZOOM jwt token is expired, please generate a new jwt token.
-     */
+     *//*
     @Override
     public void onZoomAuthIdentityExpired() {
         for(ZoomDemoAuthenticationListener listener : mListenerList) {
@@ -94,3 +92,4 @@ public class UserLoginCallback implements ZoomSDKAuthenticationListener {
     }
 }
 
+*/

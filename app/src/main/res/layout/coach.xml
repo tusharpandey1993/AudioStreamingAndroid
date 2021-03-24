@@ -4,13 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/listRootContainer"
     android:layout_width="240dp"
-    android:layout_height="420dp"
+    android:layout_height="320dp"
     android:background="@drawable/bg">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/coach_list"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         style="@style/scrollbar_shape_coach_style"
         android:orientation="vertical"
         android:layout_marginLeft="20dp"
@@ -36,6 +36,56 @@
         android:layout_centerHorizontal="true"
         android:layout_alignParentBottom="true"/>
 
+
+    <RelativeLayout
+        android:id="@+id/navigationLayout"
+        android:layout_width="240dp"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true"
+        android:background="#d2d2d2"
+        android:orientation="horizontal"
+        android:visibility="visible">
+
+        <ImageView
+            android:id="@+id/imgCustomBack"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_centerVertical="true"
+            android:layout_gravity="start"
+            android:layout_marginLeft="20dp"
+            android:src="@drawable/ic_audiotrack_dark" />
+
+        <TextView
+            android:id="@+id/tvCustomBack"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:layout_gravity="start"
+            android:layout_marginLeft="5dp"
+            android:layout_toRightOf="@+id/imgCustomBack"
+            android:text="Exit" />
+
+        <ImageView
+            android:id="@+id/imgCustomOk"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_centerVertical="true"
+            android:layout_gravity="start"
+            android:layout_marginLeft="5dp"
+            android:layout_toLeftOf="@+id/tvCustomOk"
+            android:background="#d2d2d2"
+            android:src="@drawable/ic_group_collapse_00" />
+
+        <TextView
+            android:id="@+id/tvCustomOk"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="20dp"
+            android:background="#d2d2d2"
+            android:text="Scroll" />
+    </RelativeLayout>
     <TextView
         android:id="@+id/msh"
         android:layout_width="match_parent"

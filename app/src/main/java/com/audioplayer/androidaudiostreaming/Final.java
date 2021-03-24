@@ -7,7 +7,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
-import us.zoom.sdk.MeetingError;
+/*import us.zoom.sdk.MeetingError;
 import us.zoom.sdk.MeetingService;
 import us.zoom.sdk.MeetingServiceListener;
 import us.zoom.sdk.MeetingStatus;
@@ -17,7 +17,7 @@ import us.zoom.sdk.ZoomError;
 import us.zoom.sdk.ZoomSDK;
 import us.zoom.sdk.ZoomSDKInitParams;
 import us.zoom.sdk.ZoomSDKInitializeListener;
-import us.zoom.sdk.ZoomSDKRawDataMemoryMode;
+import us.zoom.sdk.ZoomSDKRawDataMemoryMode;*/
 
 import static com.audioplayer.androidaudiostreaming.zoom.AppConstant.DISPLAY_NAME;
 import static com.audioplayer.androidaudiostreaming.zoom.AppConstant.MEETING_ID;
@@ -25,7 +25,7 @@ import static com.audioplayer.androidaudiostreaming.zoom.AppConstant.USER_ID;
 import static com.audioplayer.androidaudiostreaming.zoom.AppConstant.WEB_DOMAIN;
 import static com.audioplayer.androidaudiostreaming.zoom.AppConstant.ZOOM_ACCESS_TOKEN;
 
-public class Final extends Activity implements MeetingServiceListener, ZoomSDKInitializeListener {
+public class Final extends Activity {}/*implements MeetingServiceListener, ZoomSDKInitializeListener {
 
     private final static String TAG = "Zoom SDK Example";
 
@@ -249,4 +249,4 @@ public class Final extends Activity implements MeetingServiceListener, ZoomSDKIn
     }
 
 
-}
+}*/

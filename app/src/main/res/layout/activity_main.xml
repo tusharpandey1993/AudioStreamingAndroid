@@ -7,6 +7,117 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="240dp"
+        android:layout_height="320dp"
+        android:background="@drawable/background">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="35dp"
+            android:background="#049CE0"
+            app:layout_constraintBottom_toTopOf="@+id/constraintLayout">
+
+            <TextView
+                android:id="@+id/txtSelectedGame"
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:singleLine="true"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:gravity="center"
+                android:textSize="14sp"
+                android:fontFamily="@font/gotham_rounded_medium"
+                android:text="talent_name"
+                android:textColor="@color/white"
+                android:drawableLeft="@drawable/ic_lefts"
+                android:drawableRight="@drawable/next"/>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/constraintLayout"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            app:layout_constraintBottom_toBottomOf="@+id/recyclerView"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <RelativeLayout
+                android:id="@+id/navigationLayout"
+                android:layout_width="240dp"
+                android:layout_height="40dp"
+                android:layout_alignParentBottom="true"
+                android:background="#242A32"
+                android:orientation="horizontal"
+                android:visibility="visible"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/imgCustomBack"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_centerVertical="true"
+                    android:layout_gravity="start"
+                    android:layout_marginLeft="20dp"
+                    android:src="@drawable/ic_scroll" />
+
+                <TextView
+                    android:id="@+id/tvCustomBack"
+                    style="@style/backBtnStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_centerVertical="true"
+                    android:layout_gravity="start"
+                    android:layout_marginLeft="5dp"
+                    android:layout_toRightOf="@+id/imgCustomBack"
+                    android:text="Scroll" />
+
+                <ImageView
+                    android:id="@+id/imgCustomOk"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_centerVertical="true"
+                    android:layout_gravity="start"
+                    android:layout_marginLeft="5dp"
+                    android:layout_toLeftOf="@+id/tvCustomOk"
+                    android:src="@drawable/ic_circle_white" />
+
+                <TextView
+                    android:id="@+id/tvCustomOk"
+                    style="@style/backBtnStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginEnd="20dp"
+                    android:text="Select" />
+            </RelativeLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <com.audioplayer.androidaudiostreaming.GifLib.GifImageView
+        android:id="@+id/slowTele"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+
+    <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <Button
         android:id="@+id/play"
         android:layout_width="wrap_content"
@@ -112,7 +223,6 @@
         app:layout_constraintTop_toTopOf="parent" />
 
 
-
     <Button
         android:id="@+id/loopInfinite"
         android:layout_width="wrap_content"
@@ -122,6 +232,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
     <Button
         android:id="@+id/retryPlayResume"
         android:layout_width="wrap_content"
@@ -131,8 +242,6 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-
 
 
     <LinearLayout
@@ -147,7 +256,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0.00"
-            android:textColor="#000000"/>
+            android:textColor="#000000" />
 
         <SeekBar
             android:id="@+id/playerSeekBar"
@@ -155,15 +264,14 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
-            android:layout_weight="1"
-            />
+            android:layout_weight="1" />
+
         <TextView
             android:id="@+id/textTotalDuration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0"
-            android:textColor="#000000"/>
-
+            android:textColor="#000000" />
     </LinearLayout>
 
 </LinearLayout>

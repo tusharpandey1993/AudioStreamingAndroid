@@ -2,13 +2,13 @@ package com.audioplayer.androidaudiostreaming.zoom;
 
 import android.content.Context;
 import android.util.Log;
-
+/*
 import us.zoom.sdk.ZoomSDK;
 import us.zoom.sdk.ZoomSDKInitParams;
 import us.zoom.sdk.ZoomSDKInitializeListener;
-import us.zoom.sdk.ZoomSDKRawDataMemoryMode;
+import us.zoom.sdk.ZoomSDKRawDataMemoryMode;*/
 
-public class InitAuthSDKHelper implements AppConstant, ZoomSDKInitializeListener {
+public class InitAuthSDKHelper{} /*implements AppConstant, ZoomSDKInitializeListener {
 
     private final static String TAG = "InitAuthSDKHelper";
 
@@ -27,9 +27,9 @@ public class InitAuthSDKHelper implements AppConstant, ZoomSDKInitializeListener
         return mInitAuthSDKHelper;
     }
 
-    /**
+    *//**
      * init sdk method
-     */
+     *//*
     public void initSDK(Context context, InitAuthSDKCallback callback) {
         if (!mZoomSDK.isInitialized()) {
             mInitAuthSDKCallback = callback;
@@ -54,12 +54,12 @@ public class InitAuthSDKHelper implements AppConstant, ZoomSDKInitializeListener
         }
     }
 
-    /**
+    *//**
      * init sdk callback
      *
      * @param errorCode         defined in {@link us.zoom.sdk.ZoomError}
      * @param internalErrorCode Zoom internal error code
-     */
+     *//*
     @Override
     public void onZoomSDKInitializeResult(int errorCode, int internalErrorCode) {
         Log.i(TAG, "onZoomSDKInitializeResult, errorCode=" + errorCode + ", internalErrorCode=" + internalErrorCode);
@@ -78,3 +78,4 @@ public class InitAuthSDKHelper implements AppConstant, ZoomSDKInitializeListener
         mInitAuthSDKCallback = null;
     }
 }
+*/
