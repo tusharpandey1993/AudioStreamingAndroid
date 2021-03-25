@@ -2,16 +2,25 @@ package com.audioplayer.androidaudiostreaming;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 
+import android.Manifest;
+import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.CalendarContract;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 import android.util.Log;
@@ -42,10 +51,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -107,27 +120,149 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         setContentView(R.layout.activity_main);
         Log.d(TAG, "onCreate: reading json " + ReadConfigurationData("/sdcard/Download/stop_speak1.txt"));
 
-        gifImageView = findViewById(R.id.slowTele);
-        hh(gifImageView);
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if(gifImageView.isAnimating() ){
-                    gifImageView.stopAnimation();
-                }
+
+//        eventExistsOnCalendar("Event Name", new Date().getTime(),  new Date().getTime());
+        pushAppointmentsToCalender(MainActivity.this, "Title", "Information", "Mumbai", 1,new Date().getTime(),true,false);
+    }
+
+    public static long pushAppointmentsToCalender(Activity curActivity, String title, String addInfo, String place, int status, long startDate, boolean needReminder, boolean needMailService) {
+        /***************** Event: note(without alert) *******************/
+
+        String eventUriString = "content://com.android.calendar/events";
+        ContentValues eventValues = new ContentValues();
+
+        eventValues.put("calendar_id", 12); // id, We need to choose from
+        // our mobile for primary
+        // its 1
+        eventValues.put("title", title);
+        eventValues.put("description", addInfo);
+        eventValues.put("eventLocation", place);
+
+        long endDate = startDate + 1000 * 60 * 60; // For next 1hr
+
+        eventValues.put("dtstart", startDate);
+        eventValues.put("dtend", endDate);
+
+        // values.put("allDay", 1); //If it is bithday alarm or such
+        // kind (which should remind me for whole day) 0 for false, 1
+        // for true
+        eventValues.put("eventStatus", status); // This information is
+        // sufficient for most
+        // entries tentative (0),
+        // confirmed (1) or canceled
+        // (2):
+        eventValues.put("eventTimezone", "UTC/GMT +2:00");
+        /*Comment below visibility and transparency  column to avoid java.lang.IllegalArgumentException column visibility is invalid error */
+
+    /*eventValues.put("visibility", 3); // visibility to default (0),
+                                        // confidential (1), private
+                                        // (2), or public (3):
+    eventValues.put("transparency", 0); // You can control whether
+                                        // an event consumes time
+                                        // opaque (0) or transparent
+                                        // (1).
+      */
+        eventValues.put("hasAlarm", 1); // 0 for false, 1 for true
+
+        Uri eventUri = curActivity.getApplicationContext().getContentResolver().insert(Uri.parse(eventUriString), eventValues);
+        long eventID = Long.parseLong(eventUri.getLastPathSegment());
+
+        if (needReminder) {
+            /***************** Event: Reminder(with alert) Adding reminder to event *******************/
+
+            String reminderUriString = "content://com.android.calendar/reminders";
+
+            ContentValues reminderValues = new ContentValues();
+
+            reminderValues.put("event_id", eventID);
+            reminderValues.put("minutes", 5); // Default value of the
+            // system. Minutes is a
+            // integer
+            reminderValues.put("method", 1); // Alert Methods: Default(0),
+            // Alert(1), Email(2),
+            // SMS(3)
+
+            Uri reminderUri = curActivity.getApplicationContext().getContentResolver().insert(Uri.parse(reminderUriString), reminderValues);
+        }
+
+        /***************** Event: Meeting(without alert) Adding Attendies to the meeting *******************/
+
+        if (needMailService) {
+            String attendeuesesUriString = "content://com.android.calendar/attendees";
+
+            /********
+             * To add multiple attendees need to insert ContentValues multiple
+             * times
+             ***********/
+            ContentValues attendeesValues = new ContentValues();
+
+            attendeesValues.put("event_id", eventID);
+            attendeesValues.put("attendeeName", "xxxxx"); // Attendees name
+            attendeesValues.put("attendeeEmail", "yyyy@gmail.com");// Attendee
+            // E
+            // mail
+            // id
+            attendeesValues.put("attendeeRelationship", 0); // Relationship_Attendee(1),
+            // Relationship_None(0),
+            // Organizer(2),
+            // Performer(3),
+            // Speaker(4)
+            attendeesValues.put("attendeeType", 0); // None(0), Optional(1),
+            // Required(2), Resource(3)
+            attendeesValues.put("attendeeStatus", 0); // NOne(0), Accepted(1),
+            // Decline(2),
+            // Invited(3),
+            // Tentative(4)
+
+            Uri attendeuesesUri = curActivity.getApplicationContext().getContentResolver().insert(Uri.parse(attendeuesesUriString), attendeesValues);
+        }
+
+        return eventID;
+
+    }
+
+
+    public boolean eventExistsOnCalendar(String eventTitle, long startTimeMs, long endTimeMs) {
+        if (eventTitle == null || "".equals(eventTitle)) {
+            return false;
+        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "eventExistsOnCalendar: Permission not granted ");
+            return false;
+        }
+        // If no end time, use start + 1 hour or = 1 day. Query is slow if searching a huge time range
+        if (endTimeMs <= 0) {
+            endTimeMs = startTimeMs + 1000 * 60 * 60; // + 1 hour
+        }
+
+        final ContentResolver resolver = this.getContentResolver();
+        final String[] duplicateProjection = {CalendarContract.Events.TITLE}; // Can change to whatever unique param you are searching for
+        Cursor cursor =
+                CalendarContract.Instances.query(
+                        resolver,
+                        duplicateProjection,
+                        startTimeMs,
+                        endTimeMs,
+                        '"' + eventTitle + '"');
+
+        if (cursor == null) {
+            return false;
+        }
+        if (cursor.getCount() == 0) {
+            cursor.close();
+            return false;
+        }
+
+        while (cursor.moveToNext()) {
+            String title = cursor.getString(0);
+            if (eventTitle.equals(title)) {
+                cursor.close();
+                return true;
             }
-        },10000);
+        }
 
-        Bitmap icon = BitmapFactory.decodeResource(this.getResources(),
-                R.drawable.slow_tele);
-
-        Log.d(TAG, "onCreate: "+ getBytesFromBitmap(icon));
-/*        Fragment fragment = new VideoFragment();
-        getSupportFragmentManager().beginTransaction()
-                .addToBackStack(null)
-                .replace(R.id.container, fragment, VideoFragment.class.getSimpleName())
-                .commit();
-//        aaa();*/
+        cursor.close();
+        return false;
     }
 
 
