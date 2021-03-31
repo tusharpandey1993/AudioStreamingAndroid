@@ -4,18 +4,27 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,8 +33,12 @@ import android.provider.CalendarContract;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,6 +49,7 @@ import com.audioplayer.androidaudiostreaming.mediaPlayer.interfaces.CurrentSessi
 import com.audioplayer.androidaudiostreaming.model.ExpressionKeyFrame;
 import com.audioplayer.androidaudiostreaming.model.MediaMetaData;
 import com.audioplayer.androidaudiostreaming.model.ExpressionModel;
+import com.audioplayer.androidaudiostreaming.model.TtmCategory;
 import com.google.gson.Gson;
 
 import org.w3c.dom.Node;
@@ -51,6 +65,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -66,7 +81,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 
 @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-public class MainActivity extends AppCompatActivity implements CurrentSessionCallback, View.OnClickListener {
+public class MainActivity extends Activity implements CurrentSessionCallback, View.OnClickListener {
 
     private static final String TAG = "MainActivity";
     public static AudioStreamingManager streamingManager;
@@ -80,15 +95,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     TextView textCurrentTime, textTotalDuration;
     SeekBar playerSeekBar;
     Handler handler;
-    private int totalPercentage = 10;
-
-
-
-
-
-
-
-
+    private final int totalPercentage = 10;
 
 
     // This is for hardcoded reponse speech and speechArray
@@ -103,40 +110,168 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     private ExpressionKeyFrame expressionKeyFrame;
 
     private LinkedList<ExpressionKeyFrame> expressionKeyLinkedList;
-    private boolean firstTime = false;
+    private final boolean firstTime = false;
     private long currentExpressionIndex = 0;
     private long currentEndExpressionIndex = 0;
     List<String> arrayList;
     private MediaMetaData mediaMetaData;
     private InternetCheckThread internetCheckThread;
     private int firstExp = 0;
-    private int firstExpCounter = 0;
+    private final int firstExpCounter = 0;
     private LinkedList<String> initialExpression;
     private GifImageView gifImageView;
+    private RecyclerView recyclerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         setContentView(R.layout.activity_main);
         Log.d(TAG, "onCreate: reading json " + ReadConfigurationData("/sdcard/Download/stop_speak1.txt"));
 
+        /*pushAppointmentsToCalendar(MainActivity.this, "3", "Information", "Mumbai", 1, new Date().getTime(), false, false);
 
-//        eventExistsOnCalendar("Event Name", new Date().getTime(),  new Date().getTime());
-        pushAppointmentsToCalender(MainActivity.this, "Title", "Information", "Mumbai", 1,new Date().getTime(),true,false);
+        eventExistsOnCalendar("3", new Date().getTime(), new Date().getTime() + 1000 * 60 * 60);
+
+        getCalendarId(this);*/
+
+
+
+        recyclerView = findViewById(R.id.recyclerView);
+
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 3, GridLayoutManager.VERTICAL, false));
+
+        String[] ta = this.getResources().getStringArray(R.array.icons_category);
+
+        Log.d(TAG, "onCreate: " + ta);
+        TtmCategory ttmCategory = new TtmCategory();
+
+        ArrayList<String> arrayListImages = new ArrayList<>();
+
+
+        StringBuffer sb = new StringBuffer();
+
+        for(int i = 0; i < ta.length; i++) {
+
+            arrayListImages.add(sb.append(ta[i]).toString());
+            Log.d(TAG, "onCreate:sb " + sb);
+        }
+        ttmCategory.setCategories(arrayListImages);
+        ArrayList<String> ttmCategories = new ArrayList<>();
+
+        TypedArray taa = this.getResources().obtainTypedArray(R.array.icons_category);
+        CategoryAdapter categoryAdapter = new CategoryAdapter(this, arrayListImages, taa);
+
+        recyclerView.setAdapter(categoryAdapter);
     }
 
-    public static long pushAppointmentsToCalender(Activity curActivity, String title, String addInfo, String place, int status, long startDate, boolean needReminder, boolean needMailService) {
+
+
+
+    private class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHolder> {
+        private final Context mContext;
+        private int selectedIndex = 0;
+        private final List<String> categoryList;
+        private TypedArray taa;
+
+        public CategoryAdapter(Context context, List<String> categoryList, TypedArray taa) {
+            this.mContext = context;
+            this.categoryList = categoryList;
+            this.taa = taa;
+            Log.d(TAG, "CategoryAdapter: " + categoryList.size());
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
+            View view = LayoutInflater.from(mContext).inflate(R.layout.items, viewGroup, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder viewHolder, int position) {
+            Log.d(TAG, "onBindViewHolder: " + categoryList.get(position));
+            viewHolder.menuItem.setBackgroundResource(taa.getResourceId(position, 0));
+            if(position == 0) {
+                viewHolder.imageView.setVisibility(View.VISIBLE);
+                viewHolder.itemBorder.setVisibility(View.VISIBLE);
+                viewHolder.itemBorder.setBackgroundResource(R.drawable.unread_low);
+            }
+            if(position == 1) {
+                viewHolder.itemBorder.setVisibility(View.VISIBLE);
+                viewHolder.itemBorder.setBackgroundResource(R.drawable.unread_medium);
+            }
+            if(position == 2) {
+                viewHolder.itemBorder.setVisibility(View.VISIBLE);
+                viewHolder.itemBorder.setBackgroundResource(R.drawable.dotted);
+            }
+
+            if(position == 3) {
+                viewHolder.itemBorderFull.setVisibility(View.VISIBLE);
+                viewHolder.itemBorderFull.setBackgroundResource(R.drawable.read_low);
+            }
+            if(position == 4) {
+                viewHolder.itemBorderFull.setVisibility(View.VISIBLE);
+                viewHolder.itemBorderFull.setBackgroundResource(R.drawable.read_medium);
+            }
+            if(position == 5) {
+                viewHolder.itemBorderFull.setVisibility(View.VISIBLE);
+                viewHolder.itemBorderFull.setBackgroundResource(R.drawable.read_high);
+            }
+
+            if(position == 6) {
+                viewHolder.itemBorderFull.setVisibility(View.VISIBLE);
+                viewHolder.itemBorderFull.setBackgroundResource(R.drawable.new_medium);
+            }
+            if(position == 7) {
+                viewHolder.itemBorderFull.setVisibility(View.VISIBLE);
+                viewHolder.itemBorderFull.setBackgroundResource(R.drawable.new_medium);
+            }
+            if(position == 8) {
+                viewHolder.itemBorderFull.setVisibility(View.VISIBLE);
+                viewHolder.itemBorderFull.setBackgroundResource(R.drawable.new_high);
+            }
+
+        }
+
+        @Override
+        public int getItemCount() {
+            Log.d(TAG, "getItemCount: " + categoryList.size());
+            return categoryList.size();
+        }
+
+        public void setPosition(int currentPosition) {
+            selectedIndex = currentPosition;
+        }
+
+        private class ViewHolder extends RecyclerView.ViewHolder {
+            private final ImageView menuItem;
+            private final ImageView itemBorder;
+            private final ImageView imageView;
+            private final ImageView itemBorderFull;
+
+            public ViewHolder(View view) {
+                super(view);
+                menuItem = view.findViewById(R.id.menuItem);
+                itemBorder = view.findViewById(R.id.itemBorder);
+                imageView = view.findViewById(R.id.imageView);
+                itemBorderFull = view.findViewById(R.id.itemBorderFull);
+            }
+        }
+    }
+
+    public static long pushAppointmentsToCalendar(Activity curActivity, String title, String addInfo, String place, int status, long startDate, boolean needReminder, boolean needMailService) {
         /***************** Event: note(without alert) *******************/
 
-        String eventUriString = "content://com.android.calendar/events";
+        String eventUriString = "content://com.android.calendar/calendars";
         ContentValues eventValues = new ContentValues();
-
-        eventValues.put("calendar_id", 12); // id, We need to choose from
+        eventValues.put(CalendarContract.Events.EVENT_COLOR, Color.BLACK);
+        eventValues.put(CalendarContract.Events.CALENDAR_ID, 8);
+//        eventValues.put("calendar_id", 12); // id, We need to choose from
         // our mobile for primary
         // its 1
         eventValues.put("title", title);
         eventValues.put("description", addInfo);
-        eventValues.put("eventLocation", place);
+//        eventValues.put("eventLocation", place);
 
         long endDate = startDate + 1000 * 60 * 60; // For next 1hr
 
@@ -162,63 +297,55 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                                         // opaque (0) or transparent
                                         // (1).
       */
-        eventValues.put("hasAlarm", 1); // 0 for false, 1 for true
+        eventValues.put("hasAlarm", 0); // 0 for false, 1 for true
 
         Uri eventUri = curActivity.getApplicationContext().getContentResolver().insert(Uri.parse(eventUriString), eventValues);
-        long eventID = Long.parseLong(eventUri.getLastPathSegment());
+//        long eventID = Long.parseLong(eventUri.getLastPathSegment());
+//        Log.d(TAG, "pushAppointmentsToCalendar:eventID " + eventID);
+        return 0;
 
-        if (needReminder) {
-            /***************** Event: Reminder(with alert) Adding reminder to event *******************/
+    }
 
-            String reminderUriString = "content://com.android.calendar/reminders";
+    private Long getCalendarId(Context context) {
+        final String[] duplicateProjection = {CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_DISPLAY_NAME};
 
-            ContentValues reminderValues = new ContentValues();
+        Cursor calCursor = context.getContentResolver().query(
+                CalendarContract.Calendars.CONTENT_URI,
+                duplicateProjection,
+                CalendarContract.Calendars.VISIBLE + " = 1 AND " + CalendarContract.Calendars.IS_PRIMARY + "=1",
+                null,
+                CalendarContract.Calendars._ID + " ASC"
+        );
 
-            reminderValues.put("event_id", eventID);
-            reminderValues.put("minutes", 5); // Default value of the
-            // system. Minutes is a
-            // integer
-            reminderValues.put("method", 1); // Alert Methods: Default(0),
-            // Alert(1), Email(2),
-            // SMS(3)
-
-            Uri reminderUri = curActivity.getApplicationContext().getContentResolver().insert(Uri.parse(reminderUriString), reminderValues);
+        if (calCursor != null && calCursor.getCount() >= 0) {
+            calCursor = context.getContentResolver().query(
+                    CalendarContract.Calendars.CONTENT_URI,
+                    duplicateProjection,
+                    CalendarContract.Calendars.VISIBLE + " = 1",
+                    null,
+                    CalendarContract.Calendars._ID + " ASC"
+            );
         }
 
-        /***************** Event: Meeting(without alert) Adding Attendies to the meeting *******************/
+        if (calCursor != null) {
+            if (calCursor.moveToFirst()) {
+                String calName;
+                String calID;
+                int nameCol = calCursor.getColumnIndex(duplicateProjection[1]);
+                int idCol = calCursor.getColumnIndex(duplicateProjection[0]);
 
-        if (needMailService) {
-            String attendeuesesUriString = "content://com.android.calendar/attendees";
+                calName = calCursor.getString(nameCol);
+                calID = calCursor.getString(idCol);
 
-            /********
-             * To add multiple attendees need to insert ContentValues multiple
-             * times
-             ***********/
-            ContentValues attendeesValues = new ContentValues();
+                Log.d(TAG, "getCalendarId:calName  " + calName);
+                Log.d(TAG, "getCalendarId:calID  " + calID);
+                Log.d(TAG, "getCalendarId: Long.valueOf(calID) " + Long.valueOf(calID));
 
-            attendeesValues.put("event_id", eventID);
-            attendeesValues.put("attendeeName", "xxxxx"); // Attendees name
-            attendeesValues.put("attendeeEmail", "yyyy@gmail.com");// Attendee
-            // E
-            // mail
-            // id
-            attendeesValues.put("attendeeRelationship", 0); // Relationship_Attendee(1),
-            // Relationship_None(0),
-            // Organizer(2),
-            // Performer(3),
-            // Speaker(4)
-            attendeesValues.put("attendeeType", 0); // None(0), Optional(1),
-            // Required(2), Resource(3)
-            attendeesValues.put("attendeeStatus", 0); // NOne(0), Accepted(1),
-            // Decline(2),
-            // Invited(3),
-            // Tentative(4)
-
-            Uri attendeuesesUri = curActivity.getApplicationContext().getContentResolver().insert(Uri.parse(attendeuesesUriString), attendeesValues);
+                calCursor.close();
+                return Long.valueOf(calID);
+            }
         }
-
-        return eventID;
-
+        return null;
     }
 
 
@@ -229,6 +356,8 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "eventExistsOnCalendar: Permission not granted ");
             return false;
+        } else {
+            Log.d(TAG, "eventExistsOnCalendar: permission granted  ");
         }
         // If no end time, use start + 1 hour or = 1 day. Query is slow if searching a huge time range
         if (endTimeMs <= 0) {
@@ -256,6 +385,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         while (cursor.moveToNext()) {
             String title = cursor.getString(0);
             if (eventTitle.equals(title)) {
+                Log.d(TAG, "eventExistsOnCalendar:11 " + eventTitle);
                 cursor.close();
                 return true;
             }
@@ -266,7 +396,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     }
 
 
-    public void hh (GifImageView gifImageView) {
+    public void hh(GifImageView gifImageView) {
         try {
             InputStream is = null;
             try {
@@ -294,7 +424,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             gifImageView.startAnimation();
             gifImageView.setLoopCount(-1);
         } catch (Exception e) {
-            Log.e(TAG, "hh:Exception " + e.getMessage() );
+            Log.e(TAG, "hh:Exception " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -343,7 +473,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
         retryPlayResume.setOnClickListener(this);
     }
 
-    private Runnable updater = new Runnable() {
+    private final Runnable updater = new Runnable() {
         @Override
         public void run() {
             long currentDuration = streamingManager.lastSeekPosition();
@@ -629,7 +759,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     public void aaa() {
 
         init();
-        this.streamingManager = AudioStreamingManager.getInstance(this);
+        streamingManager = AudioStreamingManager.getInstance(this);
         playerSeekBar.setMax(100);
 
         listOfSongs = new ArrayList<MediaMetaData>();
@@ -679,7 +809,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 StringBuilder xmlStringBuilder = new StringBuilder();
                 xmlStringBuilder.append(string);
                 ByteArrayInputStream input = new ByteArrayInputStream(
-                        xmlStringBuilder.toString().getBytes("UTF-8"));
+                        xmlStringBuilder.toString().getBytes(StandardCharsets.UTF_8));
                 org.w3c.dom.Document doc = builder.parse(input);
 
                 if (!doc.getDocumentElement().getNodeName().equalsIgnoreCase("block")) {
@@ -694,7 +824,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 
                     if (nNode.getNodeType() == Node.ELEMENT_NODE) {
                         Node eElement = nNode;
-                        NodeList nodeList = ((Node) eElement).getChildNodes();
+                        NodeList nodeList = eElement.getChildNodes();
 
                         for (int k = 0; k < nodeList.getLength(); k++) {
                             Node n1 = nodeList.item(k);
@@ -734,11 +864,11 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
                 expressionKeyFrame.setStartTime(startTimePositive);
                 expressionKeyFrame.setEndTime(Long.parseLong(seqArrayList.get(i).getOffsetEnd()));
                 int j = i;
-                int incrementalValue = i+j;
+                int incrementalValue = i + j;
 //                Log.d(TAG, "fillKeyFrames: incrementalValue " + incrementalValue + "  j " + j);
-                for (j = incrementalValue; j <= incrementalValue+1; j++) {
+                for (j = incrementalValue; j <= incrementalValue + 1; j++) {
 //                    Log.d(TAG, "fillKeyFrames: j " +j);
-                    if(filteredBlockArray != null && j <= filteredBlockArray.size()-1) {
+                    if (filteredBlockArray != null && j <= filteredBlockArray.size() - 1) {
                         scriptExpressions.add(filteredBlockArray.get(j));
                     }
 
@@ -751,7 +881,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             configAudioStreamer(seqArrayList.get(0));
 
         } catch (Exception e) {
-            Log.e(TAG, "fillKeyFrames: Exception "  + e.getMessage() );
+            Log.e(TAG, "fillKeyFrames: Exception " + e.getMessage());
         }
     }
 
@@ -765,16 +895,16 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             if (iterator.hasNext()) {
                 expressionKeyFrame = iterator.next();
 
-                if(firstExp == 0 || firstExp <= 2) {
+                if (firstExp == 0 || firstExp <= 2) {
 
-                    for(int i = 0; i < expressionKeyFrame.getToDoTask().size(); i++) {
+                    for (int i = 0; i < expressionKeyFrame.getToDoTask().size(); i++) {
                         Log.d(TAG, "aa playExpression: parseKeyFrames: " + expressionKeyFrame.getToDoTask().get(i));
                         initialExpression.add(expressionKeyFrame.getToDoTask().get(i));
                     }
                     firstExp++;
                     iterator.remove();
-                    if(firstExp == 2) {
-                        Log.d(TAG, "aa playExpression:  play expression from here false "  + initialExpression.size() );
+                    if (firstExp == 2) {
+                        Log.d(TAG, "aa playExpression:  play expression from here false " + initialExpression.size());
 //                        playExpression(false);
                     }
                     return;
@@ -799,7 +929,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
     public void playExpression(boolean playSecond) {
         try {
             Log.d(TAG, "aa playExpression:firstExp " + firstExp);
-            if(firstExp <= 2) {
+            if (firstExp <= 2) {
                 Log.d(TAG, "aa playExpression: initialExpression.size() " + initialExpression.size());
                 Iterator<String> iterator = initialExpression.iterator();
                 if (iterator.hasNext()) {
@@ -815,18 +945,18 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
 //                    playSystemExpressionWithCallBack("<block><expression>{\"tx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ax\":{\"type\":0,\"size\":0,\"loop\":0,\"loop1\":0,\"seqCount\":0,\"seq\":[]},\"ax_stream\":{\"type\":15,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"id\":0,\"title\":\"NEWS-4\",\"trackNumber\":0,\"totalTrackCount\":0,\"" +
 //                            "offsetStart\":\"90000\",\"offsetEnd\":\"120000\",\"site\":\"https://miko2.s3.ap-south-1.amazonaws.com/test/KidNuz_08_12_20+(1).mp3\"}]},\"mx\":{\"type\":4,\"size\":0,\"motion_type\":4,\"loop\":3,\"seqCount\":6,\"seq\":[{\"linear\":-850,\"angular\":0,\"time\":6,\"type\":1,\"id\":0},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":1},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":2},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":3},{\"linear\":-850,\"angular\":0,\"time\":3,\"type\":1,\"id\":4},{\"linear\":850,\"angular\":0,\"time\":3,\"type\":1,\"id\":5}]},\"mx2\":{\"kp\":0,\"ki\":0,\"kd\":0,\"target_angle\":0,\"zonea\":0,\"zoneb\":0,\"positionScaleA\":0,\"positionScaleB\":0,\"positionScaleC\":0,\"velocityScaleStop\":0,\"velocityScaleMove\":0,\"onewheel\":0,\"falst\":0,\"mston\":0,\"mston_flag\":0,\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"steer\":0,\"seqCount\":0,\"seq\":[]},\"mx3\":{\"type\":0,\"size\":0,\"motion_type\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"ix1\":{\"type\":3,\"size\":0,\"imagetype\":1,\"loop\":0,\"seqCount\":1,\"seq\":[{\"frame\":\"b-97.png\",\"rate\":2,\"id\":0,\"loop\":0}]},\"rx\":{\"type\":5,\"size\":0,\"loop\":0,\"seqCount\":1,\"seq\":[{\"pattern\":5,\"color\":7,\"time\":0,\"rate\":17,\"id\":0}]},\"dx\":{\"type\":13,\"size\":0,\"loop\":1,\"seqCount\":1,\"seq\":[{\"length\":0,\"id\":0,\"time\":7000}]},\"atx\":{\"type\":0,\"size\":0,\"loop\":0,\"seqCount\":0,\"seq\":[]},\"msg\":{\"seqCount\":0,\"seq\":[]},\"id\":-928,\"vel2_shape\":false,\"fallstatus\":0,\"chargerStatus\":false}</expression></block>");
                 } else {
-                    if(arrayList.size() > 1) {
+                    if (arrayList.size() > 1) {
                         secondExp = arrayList.get(1);
                         arrayList.clear();
-                        if(!TextUtils.isEmpty(secondExp)) {
-                            Log.d(TAG, "aa playExpression: playSecond "+ playSecond + secondExp);
+                        if (!TextUtils.isEmpty(secondExp)) {
+                            Log.d(TAG, "aa playExpression: playSecond " + playSecond + secondExp);
 //                            playSystemExpressionWithCallBack(secondExp);
                             secondExp = "";
                         }
                     }
                 }
             } else {
-                Log.e(TAG, "aa playExpression: the arraylist is empty " );
+                Log.e(TAG, "aa playExpression: the arraylist is empty ");
             }
         } catch (Exception e) {
             Log.e(TAG, "playExpression:Exception " + e.getMessage());
@@ -840,7 +970,7 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             public void run() {
                 playExpression(true);
             }
-        },100);
+        }, 100);
 
     }
 
@@ -850,10 +980,10 @@ public class MainActivity extends AppCompatActivity implements CurrentSessionCal
             AssetManager manager = this.getAssets();
             buf = new StringBuilder();
             InputStream json = manager.open(path);
-            BufferedReader in = new BufferedReader(new InputStreamReader(json, "UTF-8"));
+            BufferedReader in = new BufferedReader(new InputStreamReader(json, StandardCharsets.UTF_8));
             String str;
 
-            while ((str=in.readLine()) != null) {
+            while ((str = in.readLine()) != null) {
                 buf.append(str);
             }
 
